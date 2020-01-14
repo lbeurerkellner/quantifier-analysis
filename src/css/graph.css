@@ -1,0 +1,6 @@
+.graph {
+    background-color: rgb(222, 222, 222);
+    flex: 1;
+    text-align: left;
+    position: relative;
+}
