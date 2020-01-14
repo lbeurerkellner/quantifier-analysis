@@ -3,3 +3,6 @@
     text-align: left;
     outline: none;
 }
+.editor input {
+    outline: none;
+}

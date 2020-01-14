@@ -8,7 +8,7 @@ class Editor extends React.Component {
       <div className="editor">
         <MonacoEditor
           language="javascript"
-          theme="vs-dark"
+          theme="vs-light"
           value={"abc"}
           options={{}}
           onChange={this.onChange}
