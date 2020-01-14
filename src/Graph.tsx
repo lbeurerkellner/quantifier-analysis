@@ -6,9 +6,10 @@ const CytoscapeStylesheet = [{
   selector: 'node',
   style: {
     'label': 'data(id)',
+    'font-size': '10pt',
     'text-valign': 'center',
     'color': '#000000',
-    'background-color': '#3a7ecf'
+    'background-color': '#c9cb5b'
   }
 },
 
@@ -16,7 +17,7 @@ const CytoscapeStylesheet = [{
   selector: 'edge',
   style: {
     'width': 2,
-    'line-color': '#3a7ecf',
+    'line-color': 'black',
     'opacity': 0.5
   }
 }]
