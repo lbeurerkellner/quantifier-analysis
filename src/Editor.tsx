@@ -1,6 +1,7 @@
 import React from 'react';
 import './css/editor.css';
 import MonacoEditor from 'react-monaco-editor';
+import State from './state'
 
 class Editor extends React.Component {
   render() : React.ReactNode {
@@ -9,7 +10,7 @@ class Editor extends React.Component {
         <MonacoEditor
           language="javascript"
           theme="vs-light"
-          value={"abc"}
+          value={State.get("editorContent") as string}
           options={{}}
           onChange={this.onChange}
           editorDidMount={this.editorDidMount}
@@ -19,11 +20,15 @@ class Editor extends React.Component {
   }
 
   editorDidMount(editor : any, monaco : any) {
-    console.log('editorDidMount', editor);
     editor.focus();
+    let content = State.get("editorContent") || "";
+    editor.value = "Test";
+    console.log(content);
+
+    State.store("editorContent", content);
   }
   onChange(newValue : any, e : any) {
-    console.log('onChange', newValue, e);
+    State.store("editorContent", newValue);
   }
 }
 

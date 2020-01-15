@@ -16,12 +16,12 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react"
+    "jsx": "react",
+    "noEmit": true
   },
   "include": [
     "src",
-    "src/def", 
-    "test/",
+    "src/def",
+    "test/"
   ]
 }
