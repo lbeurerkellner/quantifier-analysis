@@ -22,9 +22,6 @@ class Editor extends React.Component {
   editorDidMount(editor : any, monaco : any) {
     editor.focus();
     let content = State.get("editorContent") || "";
-    editor.value = "Test";
-    console.log(content);
-
     State.store("editorContent", content);
   }
   onChange(newValue : any, e : any) {

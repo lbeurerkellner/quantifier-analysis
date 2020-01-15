@@ -16,7 +16,7 @@ export interface Formula extends AstNode {
 export interface Variable extends AstNode {
     name : string
 }
-type Expr = ExprNode|Expr[]
+export type Expr = ExprNode|Expr[]
 export interface ExprNode extends AstNode {}
 export interface FunctionApplicationExpr extends ExprNode {
     name : string
@@ -24,6 +24,14 @@ export interface FunctionApplicationExpr extends ExprNode {
 }
 export interface Constant extends ExprNode {
     name : string
+}
+
+export function isBinaryOperation(expr : Expr) : boolean {
+    return !Array.isArray(expr) && (
+        (expr as ExprNode).type === "and" ||
+        (expr as ExprNode).type === "or" ||
+        (expr as ExprNode).type === "="
+    )
 }
 export interface BinaryOperation extends ExprNode {
     operation : ("and"|"or"|"=")
@@ -77,7 +85,7 @@ export class ASTPreprocessor {
             const e : ExprNode = exprs[i] as ExprNode;
 
             // handle binary expressions
-            if (e.type === "and" || e.type === "or" || e.type === "=") {
+            if (isBinaryOperation(e)) {
                 expressions.push({
                     type: e.type,
                     lhs: expressions.pop(),

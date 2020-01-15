@@ -38,8 +38,8 @@ class Console extends React.Component<{}, {content: string[]}> {
       <div className="console">
         <h1>Console</h1>
         <div className="content">
-          {this.state.content.map((line) => 
-            (<div className="line">{line}</div>)
+          {this.state.content.map((line, idx) => 
+            (<div key={"line"+idx} className="line">{line}</div>)
           )}
           <div style={{ float:"left", clear: "both" }}
              ref={(el) => { this.consoleEndAnchor = el as HTMLElement; }}>

@@ -5,11 +5,11 @@ import CytoscapeComponent from 'react-cytoscapejs';
 const CytoscapeStylesheet = [{
   selector: 'node',
   style: {
-    'label': 'data(id)',
+    'label': 'data(label)',
     'font-size': '10pt',
     'text-valign': 'center',
     'color': '#000000',
-    'background-color': '#c9cb5b'
+    'background-color': (e : any) => e.data("background-color") || '#bdc5f2'
   }
 },
 
@@ -18,34 +18,52 @@ const CytoscapeStylesheet = [{
   style: {
     'width': 2,
     'line-color': 'black',
-    'opacity': 0.5
+    'opacity': 0.5,
+    'label': 'data(label)',
+    'target-arrow-shape': 'triangle',
+    'curve-style': 'bezier'
   }
 }]
 
-class Graph extends React.Component {
+let LAYOUT_OPTIONS = {
+  name: 'breadthfirst',
+
+  fit: true, // whether to fit the viewport to the graph
+  directed: true, // whether the tree is directed downwards (or edges can point in any direction if false)
+  padding: 30, // padding on fit
+  circle: false, // put depths in concentric circles if true, put depths top down if false
+  grid: true, // whether to create an even grid into which the DAG is placed (circle:false only)
+  spacingFactor: 1.75, // positive spacing factor, larger => more space between nodes (N.B. n/a if causes overlap)
+  animate: false, // whether to transition the node positions
+  animationDuration: 50, // duration of animation in ms if enabled
+};
+
+class Graph extends React.Component<{graph: any[]}, {}> {
   // cytoscape global object handle
   cy : any
 
   componentDidMount() {
     this.cy.center();
+    this.cy.layout(LAYOUT_OPTIONS);
   }
   
   render() {
-    const elements = [
-      { data: { id: 'f', label: 'Node 1' }, position: { x: 0, y: 0 } },
-      { data: { id: 'g', label: 'Node 2' }, position: { x: 100, y: 0 } },
-      { data: { source: 'f', target: 'g', label: 'Edge from Node1 to Node2' } }
-   ];
     return (
       <div className="graph">
         <CytoscapeComponent 
-          elements={elements} 
+          elements={this.props.graph} 
           stylesheet={CytoscapeStylesheet}
           style={ { width: '100%', height: '100%' } } 
           cy={(_cy : any) => { this.cy = _cy; }} 
         />
       </div>
     );
+  }
+
+  componentDidUpdate() {
+    console.log("Layout now!")
+    this.cy.layout(LAYOUT_OPTIONS).run();
+    this.cy.center();
   }
 }
 
