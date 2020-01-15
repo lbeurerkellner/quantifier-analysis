@@ -29,7 +29,7 @@ class App extends React.Component<{}, {graph: any}> {
 
   render() {
     return (
-      <div className="App">
+      <div className="app">
         <div className="vsplit">
           <Editor/>
           <Console/>

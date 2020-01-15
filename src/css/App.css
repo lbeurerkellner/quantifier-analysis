@@ -1,4 +1,4 @@
-.App {
+.app {
   text-align: center;
   
   min-height: 100vh;
@@ -6,7 +6,6 @@
   flex-direction: row;
   align-items: left;
   justify-content: top;
-
   background-color: #282c34;
 }
 
