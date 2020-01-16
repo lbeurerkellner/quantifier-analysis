@@ -18,7 +18,8 @@ formula
       "type": "formula", 
       "variables": vars, 
       "pattern": pat,
-      "body": body
+      "body": body,
+      "location": location()
       }] 
   }
 
@@ -45,7 +46,11 @@ variable_list
 
 variable
   = name:IDENTIFIER { 
-    return [{"type": "variable", "name": name}]
+    return [{
+      "type": "variable", 
+      "name": name,
+      "location": location()
+    }]
   }
 
 expr_list
@@ -61,22 +66,34 @@ expr
 
 eq_expr
   =  WS "=" WS {
-    return {"type": "="}
+    return {
+      "type": "=",
+      "location": location()
+    }
   }
 
 and_expr
   = WS "and" WS {
-    return {"type": "and"}
+    return {
+      "type": "and",
+      "location": location()
+    }
   }
 
 or_expr
   = WS "or" WS {
-    return {"type": "or"}
+    return {
+      "type": "or",
+      "location": location()
+    }
 }
 
 not_expr
   = WS "not" WS {
-    return {"type": "not"}
+    return {
+      "type": "not",
+      "location": location()
+    }
 }
 
 parenthesis
@@ -87,9 +104,18 @@ func_application_or_constant
     let allOperands = operands || [];
     
     if (allOperands.length == 0) {
-      return {"type": "constant", "name": name}  
+      return {
+        "type": "constant", 
+        "name": name,
+        "location": location()
+      }  
     } else {
-      return {type: "func_application", name: name, args: allOperands}
+      return {
+        "type": "func_application", 
+        "name": name, 
+        "args": allOperands,
+        "location": location()
+      }
     }
   }
 

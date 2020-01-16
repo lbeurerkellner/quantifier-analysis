@@ -7,7 +7,8 @@ import {
     Constant,
     NotExpr,
     BinaryOperation,
-    FunctionApplicationExpr
+    FunctionApplicationExpr,
+    AstNode
 } from "./parser";
 
 var ctr = 0;
@@ -18,24 +19,35 @@ var ctr = 0;
  * the cytoscape.js library.
  */
 export class ASTCytoscapeTransformer {
+    traces = new Map<string, AstNode>();
+
     tranformASTToCy(ast: Root): any[] {
+        this.traces = new Map<string, AstNode>();
         return ast.formulas.flatMap((f, idx) => this.transformFormulaToCy(f, idx));
     }
 
     transformFormulaToCy(formula: Formula, idx: number) {
+        const formulaNodeId = "f" + idx;
         let nodes: any[] = [{ data: { 
-            id: "f" + idx, 
+            id: formulaNodeId, 
             label: "Q" + idx,
             "background-color": "rgb(240, 235, 158)"
         } }];
-        this.transformExprToCy(formula.body, "f" + idx, "body").forEach(n =>
+        this.traces.set(formulaNodeId, formula);
+
+        this.transformExprToCy(formula.body, formulaNodeId, "body").forEach(n =>
             nodes.push(n)
         );
-        nodes.push({ data: { id: "f_trigger_" + idx, label: "T" } })
-        this.transformExprToCy(formula.pattern, "f_trigger_" + idx, "pattern").forEach(n =>
+
+        const formulaTriggerNodeId = "f_trigger_" + idx;
+        nodes.push({ data: { id: formulaTriggerNodeId, label: "T" } })
+        this.traces.set(formulaTriggerNodeId, formula);
+
+        this.transformExprToCy(formula.pattern, formulaTriggerNodeId, "pattern").forEach(n =>
             nodes.push(n)
         );
-        nodes.push({ data: { target: "f_trigger_" + idx, source: "f" + idx, label: "trigger" } });
+        nodes.push({ data: { target: formulaTriggerNodeId, source: formulaNodeId, label: "trigger" } });
+
         return nodes;
     }
 
@@ -52,6 +64,8 @@ export class ASTCytoscapeTransformer {
         if (isBinaryOperation(e)) {
             id = "expr_" + e.type + "_" + ctr++;
             nodes.push({ data: { id: id, label: e.type } });
+            this.traces.set(id, e);
+
             this.transformExprToCy((e as BinaryOperation).lhs, id, "lhs").forEach(n =>
                 nodes.push(n)
             );
@@ -61,6 +75,8 @@ export class ASTCytoscapeTransformer {
         } else if (e.type === "not") {
             id = "expr_not_" + ctr++;
             nodes.push({ data: { id: id, label: e.type } });
+            this.traces.set(id, e);
+
             this.transformExprToCy((e as NotExpr).operand, id, "operand").forEach(n =>
                 nodes.push(n)
             );
@@ -73,6 +89,7 @@ export class ASTCytoscapeTransformer {
                     "background-color": "rgb(196, 69, 69)"
                 }
             });
+            this.traces.set(id, e);
         } else if (e.type === "func_application") {
             return this.transformFunctionApplicationToCy(
                 e as FunctionApplicationExpr,
@@ -82,6 +99,7 @@ export class ASTCytoscapeTransformer {
         } else {
             id = "expr_unknown_" + ctr++;
             nodes.push({ data: { id: id, label: "Unknown" } });
+            this.traces.set(id, e);
         }
         nodes.push({ data: { target: id, source: parentId, label: label } });
 
@@ -96,6 +114,8 @@ export class ASTCytoscapeTransformer {
         let nodes = [];
         let id = "func_" + func.name + ctr++;
         nodes.push({ data: { id: id, label: func.name } });
+        this.traces.set(id, func);
+
         func.args.forEach((a, idx) => {
             this.transformExprToCy(a, id, "arg" + idx).forEach(n => nodes.push(n));
         });

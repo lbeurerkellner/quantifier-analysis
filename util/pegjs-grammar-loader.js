@@ -6,9 +6,9 @@ module.exports = function(source) {
 
     fs.readFile(this.resourcePath, 'utf-8', function(err, grammarSource) {
         if(err) return callback(err);
+        //console.log(\`${grammarSource.split("\\").join("\\\\")}\`);
         callback(null, `
         const peg = require("pegjs");
-        console.log(\`${grammarSource.split("\\").join("\\\\")}\`);
         module.exports = peg.generate(\`${grammarSource.split("\\").join("\\\\")}\`);
         `);
     });

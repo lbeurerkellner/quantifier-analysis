@@ -38,13 +38,17 @@ let LAYOUT_OPTIONS = {
   animationDuration: 50, // duration of animation in ms if enabled
 };
 
-class Graph extends React.Component<{graph: any[]}, {}> {
+class Graph extends React.Component<{graph: any[], onTapNode: (nodeId : string) => void}, {}> {
   // cytoscape global object handle
   cy : any
 
   componentDidMount() {
     this.cy.center();
     this.cy.layout(LAYOUT_OPTIONS);
+
+    this.cy.on('tapstart', (event : any) => {
+      this.props.onTapNode(event.target.id());
+    });
   }
   
   render() {
@@ -61,7 +65,6 @@ class Graph extends React.Component<{graph: any[]}, {}> {
   }
 
   componentDidUpdate() {
-    console.log("Layout now!")
     this.cy.layout(LAYOUT_OPTIONS).run();
     this.cy.center();
   }

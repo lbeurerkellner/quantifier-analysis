@@ -1,3 +1,4 @@
+import { InputRange, InputLocation } from './ast-utils';
 import peg from "pegjs"
 import GrammarParser from "./Grammar.pegjs"
 
@@ -6,7 +7,8 @@ export interface Root {
 }
 
 export interface AstNode {
-    type : string 
+    type : string
+    location : InputRange
 }
 export interface Formula extends AstNode {
     variables: Variable[]
@@ -64,7 +66,8 @@ export class ASTPreprocessor {
             type: formula.type,
             variables: formula.variables,
             pattern: formula.pattern.map(this.processFunctionApplication.bind(this)),
-            body: this.processExpr(formula.body)
+            body: this.processExpr(formula.body),
+            location: formula.location
         }
     }
 
@@ -86,18 +89,24 @@ export class ASTPreprocessor {
 
             // handle binary expressions
             if (isBinaryOperation(e)) {
+                const lhs = expressions.pop() as Expr;
+                const rhs = this.processExpr(exprs[i+1]);
+                const loc = mergeRange(e.location, locationOfExpr(lhs), locationOfExpr(rhs));
                 expressions.push({
                     type: e.type,
-                    lhs: expressions.pop(),
-                    rhs: this.processExpr(exprs[i+1])
+                    lhs: lhs,
+                    rhs: rhs,
+                    location: loc
                 } as BinaryOperation)
                 i += 1;
             } 
             // transform unitary operations
             else if (e.type === "not") {
+                const operand = this.processExpr(exprs[i+1])
                 expressions.push({
                     type: "not",
-                    operand: this.processExpr(exprs[i+1])
+                    operand: operand,
+                    location: mergeRange(e.location, locationOfExpr(operand))
                 } as NotExpr)
                 i += 1;
             } else {
@@ -116,6 +125,37 @@ export class ASTPreprocessor {
     processFunctionApplication(expr : FunctionApplicationExpr) {
         return expr;
     }
+}
+
+function locationOfExpr(expr : Expr) : InputRange {
+    if (Array.isArray(expr)) {
+        let locations = (expr as Expr[]).map(e => locationOfExpr(e))
+        return mergeRange.apply(null, locations);
+    }
+    return (expr as ExprNode).location;
+}
+
+function mergeRange(...ranges : InputRange[]) {
+    if (ranges.length < 1) {
+        throw new Error("Cannot merge empty list of PegJsRanges.");
+    }
+
+    let result : InputRange = ranges[0];
+    for (let i=1; i<ranges.length; i++) {
+        let r : InputRange = ranges[i];
+        if (lessThanLocation(r.start, result.start)) {
+            result.start = r.start;
+        }
+        if (lessThanLocation(result.end, r.end)) {
+            result.end = r.end;
+        }
+    }
+    return result;
+}
+function lessThanLocation(lhs : InputLocation, rhs : InputLocation) {
+    return lhs.line < rhs.line ||
+        (lhs.line === rhs.line && lhs.column < rhs.column) ||
+        (lhs.line === rhs.line && lhs.column === rhs.column && lhs.offset < rhs.offset);
 }
 
 export class Parser {

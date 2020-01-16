@@ -3,27 +3,27 @@ import './css/App.css';
 import Editor from './Editor'
 import Graph from './Graph'
 import State from './state'
-import { Parser, ASTPreprocessor} from './ast/parser';
-import Console from './Console';
+import { Parser, ASTPreprocessor, AstNode} from './ast/parser';
 import {ASTCytoscapeTransformer} from './ast/ast-cytoscape-transformer';
+import { SyntaxError } from './def/pegjs';
+import { editor, MarkerSeverity } from 'monaco-editor';
+import { createMarker } from './ast/ast-utils';
 
 // parser components and transformers
 const astTransformer = new ASTCytoscapeTransformer();
 const preprocessors = new ASTPreprocessor();
 
-class App extends React.Component<{}, {graph: any}> {
+class App extends React.Component<{}, {graph: any, markers: editor.IMarkerData[]}> {
   parser : Parser
+  astTraces? : Map<string, AstNode>
 
   constructor(props : any) {
     super(props)
     this.parser = new Parser();
 
     this.state = {
-      graph: [
-        { data: { id: 'f', label: 'Node 1' }, position: { x: 0, y: 0 } },
-        { data: { id: 'g', label: 'Node 2' }, position: { x: 100, y: 0 } },
-        { data: { source: 'f', target: 'g', label: 'Edge from Node1 to Node2' } }
-     ]
+      graph: [],
+      markers: []
     }
   }
 
@@ -31,10 +31,9 @@ class App extends React.Component<{}, {graph: any}> {
     return (
       <div className="app">
         <div className="vsplit">
-          <Editor/>
-          <Console/>
+          <Editor markerData={this.state.markers}/>
         </div>
-        <Graph graph={this.state.graph}/>
+        <Graph graph={this.state.graph} onTapNode={this.onTapNode.bind(this)}/>
       </div>
     );
   }
@@ -50,16 +49,38 @@ class App extends React.Component<{}, {graph: any}> {
     State.unregister(this.onStateUpdate.bind(this));
   }
 
+  onTapNode(nodeId : string) {
+    if (this.astTraces) {
+      if (this.astTraces.has(nodeId)) {
+        let node = this.astTraces?.get(nodeId);
+        console.log(node);
+        if (node) {
+          // visualise trace links as INFO markers
+          const marker = createMarker(node.location, "Node Location",
+          "ast.trace.link", MarkerSeverity.Info);
+          this.setState({markers: [marker]})
+        }
+      }
+    }
+  }
+
   onStateUpdate(key : string, value : any) {
     if (key === "editorContent") {
       try {
         const rawAst = this.parser.parse(value)
         const ast = preprocessors.process(rawAst);
+        const cytoscapeGraph = astTransformer.tranformASTToCy(ast);
+        // save traces of transformation
+        this.astTraces = astTransformer.traces;
         
-        window.log("AST: " + JSON.stringify(ast));
-        this.setState({graph: astTransformer.tranformASTToCy(ast)})
+        this.setState({graph: cytoscapeGraph, markers: []})
       } catch (error) {
-        window.log("Failed to parse:" + error);
+        let syntaxError = error as SyntaxError;
+        // construct IMarkerData from peg.SyntaxError
+        const marker = createMarker(syntaxError.location, syntaxError.message,
+          "syntax.error", MarkerSeverity.Error);
+        this.setState({markers: [marker]})
+
         throw error;
       }
     }
