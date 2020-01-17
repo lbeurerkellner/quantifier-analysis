@@ -59,7 +59,8 @@ export class Validator {
 
     validateExpr(expr : Expr, parent : Formula) {
         if (Array.isArray(expr)) {
-            (expr as Expr[]).forEach(e => this.validateExpr(e, parent))
+            this.addError(expr, "This sub-expression is missing boolean connectives.", "error.type");
+            // (expr as Expr[]).forEach(e => this.validateExpr(e, parent))
         }
         return this.validateNode(expr as ExprNode, parent);
     }
@@ -103,6 +104,15 @@ export class Validator {
 
     validateEqualExpr(equalityExpression : BinaryOperation, parent : Formula) {
         this.validateBinaryOperation(equalityExpression, parent);
+
+        [equalityExpression.lhs, equalityExpression.rhs].forEach(o => {
+            const type = this.typeSystem.type(o);
+            if (type === BasicType.ErrorType) {
+                this.addError(o, `Cannot type this sub-expression.`, "error.type");
+            } else if (type !== BasicType.Sort) {
+                this.addError(o, `Type of this sub-expression must be sort.`, "error.type");
+            }
+        })
     }
 
     validateBooleanOperation(...operands : Expr[]) {
