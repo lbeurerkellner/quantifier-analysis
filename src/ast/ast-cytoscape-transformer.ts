@@ -21,8 +21,16 @@ var ctr = 0;
 export class ASTCytoscapeTransformer {
     traces = new Map<string, AstNode>();
 
-    tranformASTToCy(ast: Root): any[] {
+    transform(ast: Root): {graphDescription: any[], traces : Map<string, AstNode>} {
         this.traces = new Map<string, AstNode>();
+        let description = this.tranformASTToCy(ast);
+        return {
+            graphDescription: description,
+            traces: this.traces
+        };
+    }
+
+    tranformASTToCy(ast: Root): any[] {
         return ast.formulas.flatMap((f, idx) => this.transformFormulaToCy(f, idx));
     }
 
@@ -61,7 +69,11 @@ export class ASTCytoscapeTransformer {
 
         let id = "";
         let nodes: any[] = [];
-        if (isBinaryOperation(e)) {
+        
+        if (e === null) {
+            id = "null_" + "_" + ctr++;
+            nodes.push({ data: { id: id, label: "null" } });
+        } else if (isBinaryOperation(e)) {
             id = "expr_" + e.type + "_" + ctr++;
             nodes.push({ data: { id: id, label: e.type } });
             this.traces.set(id, e);

@@ -2,6 +2,8 @@ import { InputRange, InputLocation } from './ast-utils';
 import peg from "pegjs"
 import GrammarParser from "./Grammar.pegjs"
 
+// AST model
+
 export interface Root {
     formulas : Formula[]
 }
@@ -9,6 +11,8 @@ export interface Root {
 export interface AstNode {
     type : string
     location : InputRange
+
+    parent : AstNode|null
 }
 export interface Formula extends AstNode {
     variables: Variable[]
@@ -29,6 +33,9 @@ export interface Constant extends ExprNode {
 }
 
 export function isBinaryOperation(expr : Expr) : boolean {
+    if (typeof expr === "undefined" || expr === null) {
+        return false;
+    }
     return !Array.isArray(expr) && (
         (expr as ExprNode).type === "and" ||
         (expr as ExprNode).type === "or" ||
@@ -55,7 +62,7 @@ export interface ParenthesisNode extends AstNode {
  * Applies some transformations which lift the representation
  * from the grammar-based syntactic level to a slightly higher-level representation.
  */
-export class ASTPreprocessor {
+class ASTPreprocessor {
     process(root: Root) : Root {
         return {
             formulas: root.formulas.map(this.processFormula.bind(this))
@@ -67,14 +74,15 @@ export class ASTPreprocessor {
             variables: formula.variables,
             pattern: formula.pattern.map(this.processFunctionApplication.bind(this)),
             body: this.processExpr(formula.body),
-            location: formula.location
+            location: formula.location,
+            parent: null
         }
     }
 
     processExpr(expr : Expr) : Expr {
-        // non-array expressions (leafes) do not need to be processed
+        // non-array expressions (leaves) do not need to be processed
         if (!Array.isArray(expr)) {
-            return expr;
+            return this.processNode(expr as ExprNode) as Expr;
         }
         
         let exprs = expr as Expr[];
@@ -91,11 +99,12 @@ export class ASTPreprocessor {
             if (isBinaryOperation(e)) {
                 const lhs = expressions.pop() as Expr;
                 const rhs = this.processExpr(exprs[i+1]);
-                const loc = mergeRange(e.location, locationOfExpr(lhs), locationOfExpr(rhs));
+                const loc = mergeRange(e.location, ...[lhs, rhs]
+                    .filter(e => typeof e !== "undefined").map(e => locationOfExpr(e)));
                 expressions.push({
                     type: e.type,
-                    lhs: lhs,
-                    rhs: rhs,
+                    lhs: lhs || null,
+                    rhs: rhs || null,
                     location: loc
                 } as BinaryOperation)
                 i += 1;
@@ -105,12 +114,12 @@ export class ASTPreprocessor {
                 const operand = this.processExpr(exprs[i+1])
                 expressions.push({
                     type: "not",
-                    operand: operand,
+                    operand: operand || null,
                     location: mergeRange(e.location, locationOfExpr(operand))
                 } as NotExpr)
                 i += 1;
             } else {
-                expressions.push(e);
+                expressions.push(this.processNode(e));
             }
         }
 
@@ -121,13 +130,67 @@ export class ASTPreprocessor {
 
         return expressions;
     }
+
+    processNode(astNode : AstNode) : AstNode {
+        // skip occurrences of null in the AST
+        if (astNode === null) {
+            return astNode;
+        }
+
+        switch (astNode.type) {
+            case "formula":
+                return this.processFormula(astNode as Formula);
+            case "variable":
+            case "constant":
+                return astNode;
+            case "=":
+            case "and":
+            case "or": {
+                const binOp = astNode as BinaryOperation;
+                
+                let result = Object.assign(astNode, {}) as BinaryOperation;
+                
+                result.lhs = this.processExpr(binOp.lhs);
+                result.rhs = this.processExpr(binOp.rhs);
+                result.operation = binOp.operation;
+                
+                return result;
+            }
+            case "not": {
+                const notExpr = astNode as NotExpr;
+                
+                let result = {
+                    type: notExpr.type,
+                    location: notExpr.location
+                } as NotExpr;
+
+                result.operand = this.processExpr(notExpr.operand);
+                
+                return result;
+            }
+            case "func_application":
+                const funcAppl = astNode as FunctionApplicationExpr;
+
+                let result = Object.assign(funcAppl, {}) as FunctionApplicationExpr;
+                result.args = funcAppl.args.map(a => this.processExpr(a));
+
+                return result;
+            default:
+                console.log("Unhandled AST node type in preprocessing", astNode);
+                return astNode;
+        }
+    }
     
     processFunctionApplication(expr : FunctionApplicationExpr) {
         return expr;
     }
 }
 
-function locationOfExpr(expr : Expr) : InputRange {
+/**
+ * Computes the location/range the given Expr takes up in
+ * the input by considering the location of its sub-expressions.
+ */
+export function locationOfExpr(expr : Expr) : InputRange {
     if (Array.isArray(expr)) {
         let locations = (expr as Expr[]).map(e => locationOfExpr(e))
         return mergeRange.apply(null, locations);
@@ -135,6 +198,10 @@ function locationOfExpr(expr : Expr) : InputRange {
     return (expr as ExprNode).location;
 }
 
+/** 
+ * Merges multiple InputRange s into one by determining
+ * a common lower and upper limit.
+ */
 function mergeRange(...ranges : InputRange[]) {
     if (ranges.length < 1) {
         throw new Error("Cannot merge empty list of PegJsRanges.");
@@ -160,12 +227,15 @@ function lessThanLocation(lhs : InputLocation, rhs : InputLocation) {
 
 export class Parser {
     pegParser : peg.Parser
+    preprocessor : ASTPreprocessor
 
     constructor() {
         this.pegParser = GrammarParser
+        this.preprocessor = new ASTPreprocessor();
     }
 
     parse(content : string) : Root {
-        return this.pegParser.parse(content);
+        const rawAst = this.pegParser.parse(content);
+        return this.preprocessor.process(rawAst);
     }
 }

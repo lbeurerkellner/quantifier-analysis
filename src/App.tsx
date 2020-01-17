@@ -3,27 +3,29 @@ import './css/App.css';
 import Editor from './Editor'
 import Graph from './Graph'
 import State from './state'
-import { Parser, ASTPreprocessor, AstNode} from './ast/parser';
-import {ASTCytoscapeTransformer} from './ast/ast-cytoscape-transformer';
+import { Parser, AstNode} from './ast/parser';
+import { ASTCytoscapeTransformer } from './ast/ast-cytoscape-transformer';
 import { SyntaxError } from './def/pegjs';
 import { editor, MarkerSeverity } from 'monaco-editor';
-import { createMarker } from './ast/ast-utils';
+import { createMarker, createMarkerFromValidationError } from './ast/ast-utils';
+import { Validator } from './ast/validator';
 
 // parser components and transformers
 const astTransformer = new ASTCytoscapeTransformer();
-const preprocessors = new ASTPreprocessor();
 
-class App extends React.Component<{}, {graph: any, markers: editor.IMarkerData[]}> {
+class App extends React.Component<{}, {graph: any, markers: editor.IMarkerData[], traces : Map<string, AstNode>}> {
   parser : Parser
   astTraces? : Map<string, AstNode>
 
   constructor(props : any) {
     super(props)
+    
     this.parser = new Parser();
-
+    
     this.state = {
       graph: [],
-      markers: []
+      markers: [],
+      traces: new Map<string, AstNode>()
     }
   }
 
@@ -67,21 +69,32 @@ class App extends React.Component<{}, {graph: any, markers: editor.IMarkerData[]
   onStateUpdate(key : string, value : any) {
     if (key === "editorContent") {
       try {
-        const rawAst = this.parser.parse(value)
-        const ast = preprocessors.process(rawAst);
-        const cytoscapeGraph = astTransformer.tranformASTToCy(ast);
-        // save traces of transformation
-        this.astTraces = astTransformer.traces;
-        
-        this.setState({graph: cytoscapeGraph, markers: []})
-      } catch (error) {
-        let syntaxError = error as SyntaxError;
-        // construct IMarkerData from peg.SyntaxError
-        const marker = createMarker(syntaxError.location, syntaxError.message,
-          "syntax.error", MarkerSeverity.Error);
-        this.setState({markers: [marker]})
+        const validator = new Validator();
 
-        throw error;
+        const ast = this.parser.parse(value)
+        validator.validate(ast);
+        const errors = validator.errors;
+        const {graphDescription, traces} = astTransformer.transform(ast);
+
+        console.log(ast);
+        this.setState({graph: graphDescription, traces: traces, markers: []})
+
+        if (errors.length > 0) {
+          this.setState({markers: errors.map(e => createMarkerFromValidationError(e))});
+        }
+
+      } catch (error) {
+        // construct IMarkerData from peg.SyntaxError
+        let syntaxError = error as SyntaxError;
+        
+        if (typeof syntaxError.location !== "undefined") {
+          const marker = createMarker(syntaxError.location, syntaxError.message,
+            "syntax.error", MarkerSeverity.Error);
+          
+          this.setState({markers: [marker]})
+        } else {
+          console.error(error);
+        }
       }
     }
   }

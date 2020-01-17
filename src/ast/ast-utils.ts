@@ -1,3 +1,4 @@
+import { ValidationError } from './validator';
 import { editor, MarkerSeverity } from 'monaco-editor';
 
 export interface InputRange {
@@ -28,4 +29,8 @@ export function createMarker(range : InputRange, message : string, code : string
         severity: severity
     }
     return marker;
+}
+
+export function createMarkerFromValidationError(error : ValidationError) {
+    return createMarker(error.range, error.message, error.code, MarkerSeverity.Error);
 }

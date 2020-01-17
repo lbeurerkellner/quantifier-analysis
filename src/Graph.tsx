@@ -47,7 +47,9 @@ class Graph extends React.Component<{graph: any[], onTapNode: (nodeId : string) 
     this.cy.layout(LAYOUT_OPTIONS);
 
     this.cy.on('tapstart', (event : any) => {
-      this.props.onTapNode(event.target.id());
+      if (typeof event.target !== "undefined" && typeof event.target.id === "function") {
+        this.props.onTapNode(event.target.id());
+      }
     });
   }
   
