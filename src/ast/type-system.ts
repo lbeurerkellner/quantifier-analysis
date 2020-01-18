@@ -10,9 +10,17 @@ export enum BasicType {
 export class TypeSystem {
     type(exprOrArray : Expr) : BasicType {
         if (Array.isArray(exprOrArray)) {
-            console.error("Type system was queried for type of an expression array", exprOrArray);
+            if (exprOrArray.length > 1) {
+                console.error("Type system was queried for type of an expression array", exprOrArray);
+                return BasicType.ErrorType;
+            } else {
+                return this.type(exprOrArray[0]);
+            }
+        }
+        if (exprOrArray === null) {
             return BasicType.ErrorType;
         }
+
         const expr = exprOrArray as ExprNode;
 
         switch (expr.type) {

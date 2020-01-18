@@ -52,9 +52,10 @@ class App extends React.Component<{}, {graph: any, markers: editor.IMarkerData[]
   }
 
   onTapNode(nodeId : string) {
-    if (this.astTraces) {
-      if (this.astTraces.has(nodeId)) {
-        let node = this.astTraces?.get(nodeId);
+    if (this.state.traces) {
+      console.log(nodeId);
+      if (this.state.traces.has(nodeId)) {
+        let node = this.state.traces?.get(nodeId);
         console.log(node);
         if (node) {
           // visualise trace links as INFO markers

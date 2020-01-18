@@ -87,16 +87,17 @@ class ASTPreprocessor {
         
         let exprs = expr as Expr[];
         let expressions : Expr[] = []
-        for (var i=0; i<exprs.length; i++) {
+
+        // order of merging AST nodes below determines precedence of operators
+        // merge sibling AST nodes adjacent to "=" expression node
+        for (let i=0; i<exprs.length; i++) {
             if (Array.isArray(exprs[i])) {
                 expressions.push(this.processExpr(exprs[i]));
                 continue;
             }
-
             const e : ExprNode = exprs[i] as ExprNode;
 
-            // handle binary expressions
-            if (isBinaryOperation(e)) {
+            if (e.type === "=") {
                 const lhs = expressions.pop() as Expr;
                 const rhs = this.processExpr(exprs[i+1]);
                 const loc = mergeRange(e.location, ...[lhs, rhs]
@@ -108,24 +109,61 @@ class ASTPreprocessor {
                     location: loc
                 } as BinaryOperation)
                 i += 1;
-            } 
-            // transform unitary operations
-            else if (e.type === "not") {
-                const operand = this.processExpr(exprs[i+1])
+            } else {
+                expressions.push(e);
+            }
+        }
+        exprs = Array.from(expressions);
+        expressions = [];
+
+        // merge right-hand sibling AST node with preceeding "not" expression node
+        for (let i=0; i<exprs.length; i++) {
+            if (Array.isArray(exprs[i])) {
+                expressions.push(exprs[i]);
+                continue;
+            }
+
+            const e : ExprNode = exprs[i] as ExprNode;
+            if (e.type === "not") {
+                const operand = exprs[i+1]
                 expressions.push({
                     type: "not",
-                    operand: operand || null,
-                    location: mergeRange(e.location, locationOfExpr(operand))
+                    location: mergeRange(e.location, locationOfExpr(operand)),
+                    operand: operand
                 } as NotExpr)
                 i += 1;
             } else {
-                expressions.push(this.processNode(e));
+                expressions.push(e);
             }
         }
 
-        // remove obsolete levels of nesting
-        if (expressions.length === 1) {
-            return expressions[0];
+        exprs = Array.from(expressions);
+        expressions = [];
+
+        // merge adjacent sibling AST nodes with "and" and "or" expression nodes
+        for (let i=0; i<exprs.length; i++) {
+            if (Array.isArray(exprs[i])) {
+                expressions.push(exprs[i]);
+                continue;
+            }
+
+            const e : ExprNode = exprs[i] as ExprNode;
+            // handle binary expressions (apart from '=')
+            if (isBinaryOperation(e) && e.type !== "=") {
+                const lhs = expressions.pop() as Expr;
+                const rhs = exprs[i+1];
+                const loc = mergeRange(e.location, ...[lhs, rhs]
+                    .filter(e => typeof e !== "undefined").map(e => locationOfExpr(e)));
+                expressions.push({
+                    type: e.type,
+                    lhs: lhs || null,
+                    rhs: rhs || null,
+                    location: loc
+                } as BinaryOperation)
+                i += 1;
+            } else {
+                expressions.push(e);
+            }
         }
 
         return expressions;
@@ -133,7 +171,7 @@ class ASTPreprocessor {
 
     processNode(astNode : AstNode) : AstNode {
         // skip occurrences of null in the AST
-        if (astNode === null) {
+        if (astNode === null || typeof astNode === "undefined") {
             return astNode;
         }
 

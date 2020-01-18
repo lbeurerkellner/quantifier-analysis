@@ -70,8 +70,8 @@ export class ASTCytoscapeTransformer {
         let id = "";
         let nodes: any[] = [];
         
-        if (e === null) {
-            id = "null_" + "_" + ctr++;
+        if (e === null || typeof e === "undefined") {
+            id = "null_" + ctr++;
             nodes.push({ data: { id: id, label: "null" } });
         } else if (isBinaryOperation(e)) {
             id = "expr_" + e.type + "_" + ctr++;

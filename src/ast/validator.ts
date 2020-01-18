@@ -59,10 +59,13 @@ export class Validator {
 
     validateExpr(expr : Expr, parent : Formula) {
         if (Array.isArray(expr)) {
-            this.addError(expr, "This sub-expression is missing boolean connectives.", "error.type");
-            // (expr as Expr[]).forEach(e => this.validateExpr(e, parent))
+            if (expr.length > 1) {
+                this.addError(expr, "This sub-expression is missing boolean connectives.", "error.type");
+            }
+            (expr as Expr[]).forEach(e => this.validateExpr(e, parent))
+        } else {
+            return this.validateNode(expr as ExprNode, parent);
         }
-        return this.validateNode(expr as ExprNode, parent);
     }
 
     validateFormula(formula : Formula) {
@@ -149,10 +152,22 @@ export class Validator {
     validateFunctionApplication(funcAppl : FunctionApplicationExpr, parent : Formula) {
         funcAppl.args.forEach(a => {
             this.validateExpr(a, parent);
+
+            const type = this.typeSystem.type(a);
+            if (type === BasicType.ErrorType) {
+                this.addError(a, `Cannot type this function argument.`, "error.type");
+            } else if (type !== BasicType.Sort) {
+                this.addError(a, `Function arguments must always be of a sort type.`, "error.type");
+            }
         })
     }
 
     addError(nodeOrExpr : AstNode|Expr, message : string, code : string) {
+        if (nodeOrExpr === null) {
+            console.error("Cannot add error marker to null element.");
+            return;
+        }
+        
         let location : InputRange
         if (Array.isArray(nodeOrExpr)) {
             location = locationOfExpr(nodeOrExpr as Expr)
