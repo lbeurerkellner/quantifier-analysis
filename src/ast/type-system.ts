@@ -1,13 +1,42 @@
-import { ExprNode, Expr } from './parser';
+import { ExprNode, Expr, FunctionApplicationExpr, AstNode } from './parser';
 
 export enum BasicType {
     Boolean,
     Sort,
-    ErrorType
+    ErrorType,
+    UnknownType
+}
+
+export interface FunctionType {
+    arity : number
+    returnType : BasicType
 }
 
 /** Very basic support for two types: boolean and sort (and an error type). */
 export class TypeSystem {
+    /**
+     * Determines the function type which can be inferred for funcAppl, considering
+     * the chain of parent nodes 'parents'.
+     */
+    functionType(funcAppl : FunctionApplicationExpr, parents : AstNode[]) : FunctionType {
+        const directParent = parents[parents.length - 1];
+        let returnType : BasicType
+
+        if (directParent.type === "=" || directParent.type === "func_application") {
+            returnType = BasicType.Sort;
+        } else if (directParent.type === "formula") {
+            returnType = BasicType.UnknownType;
+        } else {
+            returnType = BasicType.Boolean;
+        }
+
+        return {
+            arity: funcAppl.args.length,
+            firstReference: null,
+            returnType: returnType
+        } as unknown as FunctionType;
+    }
+
     type(exprOrArray : Expr) : BasicType {
         if (Array.isArray(exprOrArray)) {
             if (exprOrArray.length > 1) {
@@ -30,7 +59,7 @@ export class TypeSystem {
                 console.error("Cannot type variable node", expr);
                 return BasicType.ErrorType;
             case "func_application":
-                return BasicType.Sort;
+                return BasicType.UnknownType;
             case "=":
             case "and":
             case "or":
