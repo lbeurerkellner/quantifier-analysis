@@ -17,11 +17,13 @@ const CytoscapeStylesheet = [{
   selector: 'edge',
   style: {
     'width': 2,
-    'line-color': 'black',
-    'opacity': 0.5,
+    'font-size': 12,
+    'color': 'grey',
     'label': 'data(label)',
     'target-arrow-shape': 'triangle',
-    'curve-style': 'bezier'
+    'curve-style': 'bezier',
+    'line-style': (e : any) => e.data("line-style") || 'solid',
+    'line-color': (e : any) => e.data("line-color") || 'grey',
   }
 }]
 
@@ -38,13 +40,19 @@ let LAYOUT_OPTIONS = {
   animationDuration: 50, // duration of animation in ms if enabled
 };
 
-class Graph extends React.Component<{graph: any[], onTapNode: (nodeId : string) => void}, {}> {
+interface GraphProperties {
+  graph : any[]
+  onTapNode : (nodeId : string) => void
+
+  layout : string
+}
+
+class Graph extends React.Component<GraphProperties, {}> {
   // cytoscape global object handle
   cy : any
 
   componentDidMount() {
     this.cy.center();
-    this.cy.layout(LAYOUT_OPTIONS);
 
     this.cy.on('tapstart', (event : any) => {
       if (typeof event.target !== "undefined" && typeof event.target.id === "function") {
@@ -67,7 +75,7 @@ class Graph extends React.Component<{graph: any[], onTapNode: (nodeId : string) 
   }
 
   componentDidUpdate() {
-    this.cy.layout(LAYOUT_OPTIONS).run();
+    this.cy.layout(Object.assign(LAYOUT_OPTIONS, {name: this.props.layout})).run();
     this.cy.center();
   }
 }
