@@ -2,14 +2,20 @@ import React from 'react';
 import './css/graph.css';
 import CytoscapeComponent from 'react-cytoscapejs';
 
+import cytoscape from "cytoscape"
+import cola from "cytoscape-cola";
+cytoscape.use(cola);
+
 const CytoscapeStylesheet = [{
   selector: 'node',
   style: {
-    'label': 'data(label)',
+    'label': (e : any) => e.data("label") || "",
     'font-size': '10pt',
     'text-valign': 'center',
     'color': '#000000',
-    'background-color': (e : any) => e.data("background-color") || '#bdc5f2'
+    'background-color': (e : any) => e.data("background-color") || '#bdc5f2', 
+    'border-color': (e : any) => e.data("border-color") || 'transparent',
+    'border-width': (e : any) => e.data("border-width") || '0pt',
   }
 },
 
@@ -19,11 +25,13 @@ const CytoscapeStylesheet = [{
     'width': 2,
     'font-size': 12,
     'color': 'grey',
-    'label': 'data(label)',
-    'target-arrow-shape': 'triangle',
+    'label': (e : any) => e.data("label") || "",
     'curve-style': 'bezier',
     'line-style': (e : any) => e.data("line-style") || 'solid',
     'line-color': (e : any) => e.data("line-color") || 'grey',
+    'target-arrow-shape': (e : any) => e.data("target-arrow-shape") || 'triangle',
+    'target-arrow-color': (e : any) => e.data("target-arrow-color") || 'grey',
+    
   }
 }]
 
@@ -38,6 +46,7 @@ let LAYOUT_OPTIONS = {
   spacingFactor: 1.75, // positive spacing factor, larger => more space between nodes (N.B. n/a if causes overlap)
   animate: false, // whether to transition the node positions
   animationDuration: 50, // duration of animation in ms if enabled
+  randomize: false,
 };
 
 interface GraphProperties {

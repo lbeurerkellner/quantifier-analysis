@@ -1,16 +1,16 @@
-import React from 'react';
-import './css/App.css';
-import Editor from './Editor'
-import Graph from './Graph'
-import State from './state'
-import { Parser, AstNode, FunctionApplicationExpr, Variable, Formula} from './ast/parser';
-import { ASTCytoscapeTransformer } from './ast/ast-cytoscape-transformer';
-import { SyntaxError } from './def/pegjs';
 import { editor, MarkerSeverity } from 'monaco-editor';
+import React from 'react';
+import { ASTCytoscapeTransformer } from './ast/ast-cytoscape-transformer';
 import { createMarker, createMarkerFromValidationError } from './ast/ast-utils';
+import { AstNode, Parser } from './ast/parser';
 import { Validator } from './ast/validator';
-import { QuantifierInstantiationNode, FunctionApplicationNode, VariableNode, InstantiationNodeType } from './instantiation-graph/instantiation-graph';
+import './css/App.css';
+import { SyntaxError } from './def/pegjs';
+import Editor from './Editor';
+import Graph from './Graph';
 import { InstantiationGraphCyTransformer } from './instantiation-graph/instantiation-graph-cy-transformer';
+import * as GraphOperations from "./instantiation-graph/operations";
+import State from './state';
 
 
 // parser components and transformers
@@ -18,9 +18,12 @@ const astTransformer = new ASTCytoscapeTransformer();
 
 interface AppState {
   astGraph: any[]
-  instantiationGraph : any[]
-  markers: editor.IMarkerData[]
   traces : Map<string, AstNode>
+
+  instantiationGraph : any[]
+  instGraphTraces : Map<string, AstNode>
+  
+  markers: editor.IMarkerData[]
 }
 
 class App extends React.Component<{}, AppState> {
@@ -34,9 +37,10 @@ class App extends React.Component<{}, AppState> {
     
     this.state = {
       astGraph: [],
-      instantiationGraph: new InstantiationGraphCyTransformer().transform(createDummyIG()).graphDescription,
+      instantiationGraph: [],
       markers: [],
-      traces: new Map<string, AstNode>()
+      traces: new Map<string, AstNode>(),
+      instGraphTraces: new Map<string, AstNode>()
     }
   }
 
@@ -46,8 +50,8 @@ class App extends React.Component<{}, AppState> {
         <div className="vsplit">
           <Editor markerData={this.state.markers}/>
         </div>
-        <Graph graph={this.state.astGraph} onTapNode={this.onTapNode.bind(this)} layout="breadthfirst"/>
-        <Graph graph={this.state.instantiationGraph} onTapNode={this.onTapNode.bind(this)} layout="breadthfirst"/>
+        <Graph graph={this.state.astGraph} onTapNode={this.onTapNode.bind(this, "ast")} layout="breadthfirst"/>
+        <Graph graph={this.state.instantiationGraph} onTapNode={this.onTapNode.bind(this, "inst")} layout="cola"/>
       </div>
     );
   }
@@ -63,12 +67,11 @@ class App extends React.Component<{}, AppState> {
     State.unregister(this.onStateUpdate.bind(this));
   }
 
-  onTapNode(nodeId : string) {
+  onTapNode(graph : string, nodeId : string) {
     if (this.state.traces) {
-      console.log(nodeId);
-      if (this.state.traces.has(nodeId)) {
-        let node = this.state.traces?.get(nodeId);
-        console.log(node);
+      const traces = graph === "ast" ? this.state.traces : this.state.instGraphTraces;
+      if (traces.has(nodeId)) {
+        let node = traces?.get(nodeId);
         if (node) {
           // visualise trace links as INFO markers
           const marker = createMarker(node.location, "Node Location",
@@ -81,6 +84,7 @@ class App extends React.Component<{}, AppState> {
 
   onStateUpdate(key : string, value : any) {
     if (key === "editorContent") {
+      console.log("content changed");
       try {
         const validator = new Validator();
 
@@ -89,13 +93,19 @@ class App extends React.Component<{}, AppState> {
         const errors = validator.errors;
         const {graphDescription, traces} = astTransformer.transform(ast);
 
-        console.log(ast);
         this.setState({astGraph: graphDescription, traces: traces, markers: []})
 
         if (errors.length > 0) {
           this.setState({markers: errors.map(e => createMarkerFromValidationError(e))});
-        }
+        } else {
+          const formula = ast.formulas[0];
+          const instGraphNodes = GraphOperations.instantiateFormula(formula);
 
+          const {graphDescription: instGraphCyRepr,
+            traces: instGraphTraces} = new InstantiationGraphCyTransformer().transform([instGraphNodes]);
+
+          this.setState({instantiationGraph: instGraphCyRepr, instGraphTraces: instGraphTraces});
+        }
       } catch (error) {
         // construct IMarkerData from peg.SyntaxError
         let syntaxError = error as SyntaxError;
@@ -111,58 +121,6 @@ class App extends React.Component<{}, AppState> {
       }
     }
   }
-}
-
-function createDummyIG() : QuantifierInstantiationNode[] {
-  let f_of_x : FunctionApplicationNode = {
-    arguments: [
-      {
-        name: "x",
-        equivalenceClass: [],
-        type: InstantiationNodeType.VARIABLE,
-        variable: null as unknown as Variable
-      } as VariableNode
-    ],
-    equivalenceClass: [],
-    functionApplication: {
-      args: [],
-      name: "f"
-    } as unknown as FunctionApplicationExpr,
-    instantiator: [],
-    matches: [],
-    type: InstantiationNodeType.FUNC_APPL
-  }
-
-  let g_of_x : FunctionApplicationNode = {
-    arguments: [],
-    equivalenceClass: [],
-    functionApplication: {
-      args: [],
-      name: "g"
-    } as unknown as FunctionApplicationExpr,
-    instantiator: [],
-    matches: [],
-    type: InstantiationNodeType.FUNC_APPL
-  }
-  
-  let n1 : QuantifierInstantiationNode = {
-    name: "a1:F1",
-    type: InstantiationNodeType.QUANTIFIER,
-    formula: null as unknown as Formula,
-    matched: [
-      g_of_x
-    ],
-    instantiated: [
-      f_of_x
-    ]
-  }
-  f_of_x.instantiator.push(n1);
-  g_of_x.matches.push(n1);
-  g_of_x.arguments.push(f_of_x.arguments[0]);
-
-  return [
-    n1
-  ];
 }
 
 export default App;

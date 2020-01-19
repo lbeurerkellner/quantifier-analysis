@@ -1,19 +1,27 @@
 import { AstNode } from '../ast/parser';
-import { QuantifierInstantiationNode, InstantiationNode, InstantiationNodeType, FunctionApplicationNode, VariableNode, ConstantNode } from './instantiation-graph';
+import { QuantifierInstantiationNode, InstantiationNode, InstantiationNodeType, FunctionApplicationNode, VariableNode, ConstantNode, TermNode } from './instantiation-graph';
 
 const EdgeStyleMatches = {
     "line-color": "rgb(187, 100, 237)",
+    "target-arrow-color": "rgb(187, 100, 237)",
     "line-style": "dashed"
 }
 const EdgeStyleInstantiates = {
     "line-color": "rgb(219, 228, 83)",
+    "target-arrow-color": "rgb(219, 228, 83)",
     "line-style": "dashed"
+}
+const EdgeStyleEquality = {
+    "line-color": "rgb(37, 106, 49)",
+    "line-style": "dashed",
+    "line-width": "1pt",
+    "target-arrow-shape": "none"
 }
 
 export class InstantiationGraphCyTransformer {
     traces = new Map<string, AstNode>();
     
-    cache = new Map<InstantiationNode, any[]>();
+    cache = new Map<InstantiationNode|Set<TermNode>, any[]>();
     idMap = new Map<InstantiationNode, string>();
 
     ctr = 0
@@ -62,8 +70,11 @@ export class InstantiationGraphCyTransformer {
         let nodes: any[] = [{ data: { 
             id: qiNodeId, 
             label: qi.name,
-            "background-color": "rgb(240, 235, 158)"
+            "background-color": "rgb(240, 235, 158)",
+            "position": [0, 0]
         } }];
+
+        this.traces.set(qiNodeId, qi.formula);
 
         // add placeholder to cache and idMap
         this.idMap.set(qi, qiNodeId);
@@ -90,6 +101,7 @@ export class InstantiationGraphCyTransformer {
             "id": faNodeId, 
             "label": fa.functionApplication.name
         } }];
+        this.traces.set(faNodeId, fa.functionApplication);
 
         // add placeholder to cache and idMap
         this.idMap.set(fa, faNodeId);
@@ -98,7 +110,7 @@ export class InstantiationGraphCyTransformer {
         // transform instantiator quantifier nodes
         fa.instantiator.forEach(i => this.transformNode(i));
 
-        // transform matched quantifier nodes
+        // transform matches quantifier nodes
         fa.matches.forEach(qi => {
             let targetId = this.transformNode(qi);
             nodes.push({ data: { target: targetId, source: faNodeId, ...EdgeStyleMatches} });
@@ -106,6 +118,9 @@ export class InstantiationGraphCyTransformer {
 
         // transform other nodes in equivalence class
         fa.equivalenceClass.forEach(n => this.transformNode(n));
+
+        // transform equivalence class edges
+        this.transformEquivalenceClass(fa.equivalenceClass);
 
         // transform function arguments
         fa.arguments.forEach((a, idx) => {
@@ -124,6 +139,11 @@ export class InstantiationGraphCyTransformer {
             "label": v.name,
             "background-color": "rgb(196, 69, 69)"
         } }];
+        this.traces.set(nodeId, v.variable);
+
+        this.cache.set(v, nodes);
+        // transform equivalence class edges
+        this.transformEquivalenceClass(v.equivalenceClass);
 
         this.cache.set(v, nodes);
         return nodeId;
@@ -136,8 +156,38 @@ export class InstantiationGraphCyTransformer {
             "label": "<constant>",
             "background-color": "rgb(196, 69, 69)"
         } }];
+        // this.traces.set(nodeId, c.constant); // unsupported for now
+
+        this.cache.set(c, nodes);
+
+        // transform equivalence class edges
+        this.transformEquivalenceClass(c.equivalenceClass);
 
         this.cache.set(c, nodes);
         return nodeId;
+    }
+
+    transformEquivalenceClass(equivalenceClass : Set<TermNode>) {
+        let edges : any[] = [];
+        equivalenceClass.forEach(lhs => {
+            equivalenceClass.forEach(rhs => {
+                if (lhs === rhs) {
+                    return;
+                }
+                let targetId = this.transformNode(lhs);
+                let sourceId = this.transformNode(rhs);
+
+                if (targetId < sourceId) { // only create one edge per relation
+                    edges.push({ data: { 
+                        target: targetId, 
+                        source: sourceId, 
+                        label: "",
+                        ...EdgeStyleEquality
+                        } });
+                }
+            })
+        })
+        
+        this.cache.set(equivalenceClass, edges);
     }
 }

@@ -12,7 +12,7 @@ export interface InstantiationNode {
 }
 
 export interface TermNode extends InstantiationNode {
-    equivalenceClass : TermNode[]
+    equivalenceClass : Set<TermNode>
 }
 
 export interface QuantifierInstantiationNode extends InstantiationNode {
@@ -21,8 +21,8 @@ export interface QuantifierInstantiationNode extends InstantiationNode {
 
     formula : Formula
 
-    matched : FunctionApplicationNode[]
-    instantiated : FunctionApplicationNode[]
+    matched : TermNode[]
+    instantiated : TermNode[]
 }
 
 export interface FunctionApplicationNode extends TermNode {

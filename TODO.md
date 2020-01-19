@@ -7,3 +7,5 @@
 
     - transformer to cytoscape 
         - support for equality information in graph
+        - visually indicate terms without instantiator
+        - forward stepping
