@@ -45,13 +45,14 @@ class App extends React.Component<{}, AppState> {
     }
   }
 
+  // <Graph graph={this.state.astGraph} onTapNode={this.onTapNode.bind(this, "ast")} layout="breadthfirst"/>
+
   render() {
     return (
       <div className="app">
         <div className="vsplit">
           <Editor markerData={this.state.markers}/>
         </div>
-        <Graph graph={this.state.astGraph} onTapNode={this.onTapNode.bind(this, "ast")} layout="breadthfirst"/>
         <Graph graph={this.state.instantiationGraph} onTapNode={this.onTapNode.bind(this, "inst")} layout="breadthfirst"/>
       </div>
     );
@@ -85,7 +86,6 @@ class App extends React.Component<{}, AppState> {
 
   onStateUpdate(key : string, value : any) {
     if (key === "editorContent") {
-      console.log("content changed");
       try {
         const validator = new Validator();
 

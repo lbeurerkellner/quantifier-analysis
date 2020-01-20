@@ -179,8 +179,8 @@ export class Validator {
             const type = this.typeSystem.type(a);
             if (type === BasicType.ErrorType) {
                 this.addError(a, `Cannot type this function argument.`, "error.type");
-            } else if (type !== BasicType.Sort) {
-                this.addError(a, `Function arguments must always be of a sort type.`, "error.type");
+            } else if (type !== BasicType.Sort && type !== BasicType.UnknownType) {
+                this.addError(a, `Function arguments must always be of a sort type, not ${typeDescription(type)}.`, "error.type");
             }
         })
     }
@@ -250,4 +250,17 @@ function childrenOfExpr(expr : Expr) : AstNode[] {
         return (expr as Expr[]).flatMap(e => childrenOfExpr(e))
     }
     return childrenOf(expr as ExprNode);
+}
+
+function typeDescription(type : BasicType) {
+    switch (type) {
+        case BasicType.Boolean:
+            return "boolean";
+        case BasicType.Sort:
+            return "sort";
+        case BasicType.UnknownType:
+            return "unknown";
+        case BasicType.ErrorType:
+            return "error";
+    }
 }

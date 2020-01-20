@@ -28,11 +28,12 @@ export interface QuantifierInstantiationNode extends InstantiationNode {
 
     formula : Formula
 
-    matched : TermNode[]
-    instantiated : TermNode[]
+    matched : Set<TermNode>
+    instantiated : Set<TermNode>
 }
 
 export interface FunctionApplicationNode extends TermNode {
+    name : string
     matches : QuantifierInstantiationNode[]
 
     functionApplication : FunctionApplicationExpr

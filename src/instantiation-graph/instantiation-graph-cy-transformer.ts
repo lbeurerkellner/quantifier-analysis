@@ -30,7 +30,11 @@ export class InstantiationGraphCyTransformer {
         this.traces = new Map<string, AstNode>();
         this.ctr = 0;
 
-        qis.forEach((qi, idx) => this.transformNode(qi));
+
+        qis.forEach((qi, idx) => {
+            this.transformNode(qi)
+        });
+
         let description = Array.from(this.cache.values()).flatMap(v => v);
 
         return {
@@ -89,8 +93,10 @@ export class InstantiationGraphCyTransformer {
             let targetId = this.transformNode(n)
             // only show an 'instantiates' edge if the set of instantiators of any of the referencing nodes 
             //  is different for the parent node
-            if (Array.from(n.references).reduce((previous, ref) => previous && equalSets(ref.instantiator, n.instantiator), true)) {
-                nodes.push({ data: { target: targetId, source: qiNodeId, ...EdgeStyleInstantiates } });
+            if (n.references.size === 0 || !Array.from(n.references).reduce((previous, ref) => previous && equalSets(ref.instantiator, n.instantiator), true)) {
+                if (n.type !== InstantiationNodeType.VARIABLE) {
+                    nodes.push({ data: { target: targetId, source: qiNodeId, ...EdgeStyleInstantiates } });
+                }
             }
         });
 
@@ -129,6 +135,15 @@ export class InstantiationGraphCyTransformer {
 
         // transform equivalence class edges
         this.transformEquivalenceClass(fa.equivalenceClass);
+
+        // check for instantiator
+        if (!hasInstantiator(fa)) {
+            nodes[0].data["border-color"] = "red";
+            nodes[0].data["border-width"] = "2pt";
+        } else {
+            nodes[0].data["border-color"] = "transparent";
+            nodes[0].data["border-width"] = "0pt";
+        }
 
         // transform function arguments
         fa.arguments.forEach((a, idx) => {
@@ -177,6 +192,10 @@ export class InstantiationGraphCyTransformer {
     }
 
     transformEquivalenceClass(equivalenceClass : Set<TermNode>) {
+        if (this.cache.has(equivalenceClass)) {
+            return;
+        }
+
         let edges : any[] = [];
         this.cache.set(equivalenceClass, edges);
         equivalenceClass.forEach(lhs => {
@@ -201,6 +220,23 @@ export class InstantiationGraphCyTransformer {
     }
 }
 
+/** 
+ * Checks whether termNode or any of its parent reference nodes 
+ * has an instantiator.
+  */
+function hasInstantiator(termNode : TermNode) {
+    if (termNode.instantiator.size > 0) {
+        return true;
+    } else {
+        for (let r of Array.from(termNode.references)) {
+            if (hasInstantiator(r)) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
 /** Checks s1 and s2 to be sets of the same elements. */
 function equalSets<T>(s1 : Set<T>, s2 : Set<T>) : boolean {
     if (s1 === s2) {
@@ -209,11 +245,13 @@ function equalSets<T>(s1 : Set<T>, s2 : Set<T>) : boolean {
     if (s1.size !== s2.size) {
         return false;
     }
-    const element = s1.values().next();
+    const itr = s1.values();
+    let element = itr.next();
     while(!element.done) {
         if (!s2.has(element.value)) {
             return false;
         }
+        element = itr.next();
     }
     return true;
 }

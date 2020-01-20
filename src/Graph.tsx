@@ -10,7 +10,7 @@ const CytoscapeStylesheet = [{
   selector: 'node',
   style: {
     'label': (e : any) => e.data("label") || "",
-    'font-size': '10pt',
+    'font-size': '16pt',
     'text-valign': 'center',
     'color': '#000000',
     'background-color': (e : any) => e.data("background-color") || '#bdc5f2', 
@@ -82,10 +82,12 @@ class Graph extends React.Component<GraphProperties, {}> {
       </div>
     );
   }
-
-  componentDidUpdate() {
-    this.cy.layout(Object.assign(LAYOUT_OPTIONS, {name: this.props.layout})).run();
-    this.cy.center();
+  
+  componentDidUpdate(prevProps : GraphProperties) {
+    if (prevProps.graph !== this.props.graph) {
+      this.cy.layout(Object.assign(LAYOUT_OPTIONS, {name: this.props.layout})).run();
+      this.cy.center();
+    }
   }
 }
 
