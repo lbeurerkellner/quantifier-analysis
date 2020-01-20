@@ -12,7 +12,14 @@ export interface InstantiationNode {
 }
 
 export interface TermNode extends InstantiationNode {
+    // the set of terms which are considered to be equivalent 
+    // to this term (by established equalities in the instantiated formulas)
     equivalenceClass : Set<TermNode>
+    // the set of function application nodes which refer to this term
+    // as an argument
+    references : Set<FunctionApplicationNode>
+    // the list of quantifier instantiation that instantiate this term
+    instantiator : Set<QuantifierInstantiationNode>
 }
 
 export interface QuantifierInstantiationNode extends InstantiationNode {
@@ -26,7 +33,6 @@ export interface QuantifierInstantiationNode extends InstantiationNode {
 }
 
 export interface FunctionApplicationNode extends TermNode {
-    instantiator : QuantifierInstantiationNode[]
     matches : QuantifierInstantiationNode[]
 
     functionApplication : FunctionApplicationExpr

@@ -30,7 +30,7 @@ export class InstantiationGraphCyTransformer {
         this.traces = new Map<string, AstNode>();
         this.ctr = 0;
 
-        qis.forEach((qi, idx) => this.transformQuantifierInstantiation(qi));
+        qis.forEach((qi, idx) => this.transformNode(qi));
         let description = Array.from(this.cache.values()).flatMap(v => v);
 
         return {
@@ -59,6 +59,10 @@ export class InstantiationGraphCyTransformer {
                 nodeId = this.transformConstant(node as ConstantNode);
                 break;
         }
+
+        if (typeof nodeId === "undefined") {
+            throw new Error("Failed to transform node " + node);
+        }
         
         this.idMap.set(node, nodeId);
 
@@ -83,7 +87,11 @@ export class InstantiationGraphCyTransformer {
         // transform instantiated nodes
         qi.instantiated.forEach(n => {
             let targetId = this.transformNode(n)
-            nodes.push({ data: { target: targetId, source: qiNodeId, ...EdgeStyleInstantiates } });
+            // only show an 'instantiates' edge if the set of instantiators of any of the referencing nodes 
+            //  is different for the parent node
+            if (Array.from(n.references).reduce((previous, ref) => previous && equalSets(ref.instantiator, n.instantiator), true)) {
+                nodes.push({ data: { target: targetId, source: qiNodeId, ...EdgeStyleInstantiates } });
+            }
         });
 
         // transform matched nodes
@@ -141,6 +149,7 @@ export class InstantiationGraphCyTransformer {
         } }];
         this.traces.set(nodeId, v.variable);
 
+        this.idMap.set(v, nodeId);
         this.cache.set(v, nodes);
         // transform equivalence class edges
         this.transformEquivalenceClass(v.equivalenceClass);
@@ -157,7 +166,7 @@ export class InstantiationGraphCyTransformer {
             "background-color": "rgb(196, 69, 69)"
         } }];
         // this.traces.set(nodeId, c.constant); // unsupported for now
-
+        this.idMap.set(c, nodeId);
         this.cache.set(c, nodes);
 
         // transform equivalence class edges
@@ -169,6 +178,7 @@ export class InstantiationGraphCyTransformer {
 
     transformEquivalenceClass(equivalenceClass : Set<TermNode>) {
         let edges : any[] = [];
+        this.cache.set(equivalenceClass, edges);
         equivalenceClass.forEach(lhs => {
             equivalenceClass.forEach(rhs => {
                 if (lhs === rhs) {
@@ -187,7 +197,23 @@ export class InstantiationGraphCyTransformer {
                 }
             })
         })
-        
         this.cache.set(equivalenceClass, edges);
     }
+}
+
+/** Checks s1 and s2 to be sets of the same elements. */
+function equalSets<T>(s1 : Set<T>, s2 : Set<T>) : boolean {
+    if (s1 === s2) {
+        return true;
+    }
+    if (s1.size !== s2.size) {
+        return false;
+    }
+    const element = s1.values().next();
+    while(!element.done) {
+        if (!s2.has(element.value)) {
+            return false;
+        }
+    }
+    return true;
 }

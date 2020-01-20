@@ -11,6 +11,7 @@ import Graph from './Graph';
 import { InstantiationGraphCyTransformer } from './instantiation-graph/instantiation-graph-cy-transformer';
 import * as GraphOperations from "./instantiation-graph/operations";
 import State from './state';
+import { TermNode } from './instantiation-graph/instantiation-graph';
 
 
 // parser components and transformers
@@ -51,7 +52,7 @@ class App extends React.Component<{}, AppState> {
           <Editor markerData={this.state.markers}/>
         </div>
         <Graph graph={this.state.astGraph} onTapNode={this.onTapNode.bind(this, "ast")} layout="breadthfirst"/>
-        <Graph graph={this.state.instantiationGraph} onTapNode={this.onTapNode.bind(this, "inst")} layout="cola"/>
+        <Graph graph={this.state.instantiationGraph} onTapNode={this.onTapNode.bind(this, "inst")} layout="breadthfirst"/>
       </div>
     );
   }
@@ -99,11 +100,13 @@ class App extends React.Component<{}, AppState> {
           this.setState({markers: errors.map(e => createMarkerFromValidationError(e))});
         } else {
           const formula = ast.formulas[0];
-          const instGraphNodes = GraphOperations.instantiateFormula(formula);
-
+          const bindings = new Map<string, TermNode>();
+          const instGraphNodes = [GraphOperations.instantiateFormula(formula, bindings)] //, GraphOperations.instantiateFormula(formula, bindings)];
+          console.log(instGraphNodes);
+          
           const {graphDescription: instGraphCyRepr,
-            traces: instGraphTraces} = new InstantiationGraphCyTransformer().transform([instGraphNodes]);
-
+            traces: instGraphTraces} = new InstantiationGraphCyTransformer().transform(instGraphNodes);
+          
           this.setState({instantiationGraph: instGraphCyRepr, instGraphTraces: instGraphTraces});
         }
       } catch (error) {
