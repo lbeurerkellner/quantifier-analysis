@@ -1,4 +1,7 @@
 #!/bin/bash
+
+set -e
+
 echo "⚙️  Compiling Tests..."
 npx tsc --build test-build/tsconfig.tests.json
 echo "🔤  Compiling Grammar..."

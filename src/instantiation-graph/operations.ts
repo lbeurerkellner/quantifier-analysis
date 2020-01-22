@@ -57,7 +57,7 @@ export function path(node : FunctionApplicationExpr|Variable|Constant) : string 
 }
 
 export function instantiateTerm(e: Expr, bindings = new Map<string, TermNode>(), 
-    instantiator : QuantifierInstantiationNode|null,
+    instantiator : QuantifierInstantiationNode|null = null,
     reference : FunctionApplicationNode|null = null, 
     matches : QuantifierInstantiationNode[] = []): TermNode {
 
@@ -119,7 +119,7 @@ export function instantiateTerm(e: Expr, bindings = new Map<string, TermNode>(),
         // set resultNode to be returned
         resultNode = faNode;
     } else if (term.type === "variable" || term.type === "constant") {
-        if (resultNode && term.type !== resultNode.type) {
+        if (resultNode && term.type as string !== resultNode.type as string) {
             // variable 'term' has been replaced/bound to a different term in the current graph
             // extend existing node by additional 'reference' parent node
             if (reference) {

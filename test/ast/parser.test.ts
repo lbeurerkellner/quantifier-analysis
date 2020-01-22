@@ -2,8 +2,6 @@ import { Expr, FunctionApplicationExpr, ExprNode, Constant, BinaryOperation, Not
 import { expect } from 'chai';
 import { Parser } from '../../src/ast/parser';
 
-console.log("Test!");
-
 describe('Parser', () => {
 
   it('should parse simple constant', () => {

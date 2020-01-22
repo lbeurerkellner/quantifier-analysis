@@ -3,13 +3,23 @@ import peg from "pegjs"
 import GrammarParser from "./Grammar.pegjs"
 
 // AST model
+export enum NodeType {
+    FORMULA = "formula",
+    VARIABLE = "variable",
+    EQ = "=",
+    AND = "and",
+    OR = "or",
+    NOT = "not",
+    CONSTANT = "constant",
+    FUNC_APPLICATION = "func_application"
+}
 
 export interface Root {
     formulas : Formula[]
 }
 
 export interface AstNode {
-    type : string
+    type : NodeType
     location : InputRange
 
     parent : AstNode|null
@@ -48,7 +58,6 @@ export interface BinaryOperation extends ExprNode {
     rhs : Expr
 }
 export interface NotExpr extends ExprNode {
-    type : string
     operand : Expr
 }
 export interface ParenthesisNode extends AstNode {
