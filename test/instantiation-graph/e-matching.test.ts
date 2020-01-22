@@ -107,6 +107,39 @@ describe('E-Matching', () => {
       expect(varBinding.name).to.be.equal("b2");
     }
   });
+
+  it('should match with multiple possible bindings via equalities', () => {
+    const bindings = matchBinding("f(f(a1), a2)", "f(b1, b2) and (b1 = f(b3)) and (b2 = g(b3))");
+    expect(bindings).to.have.lengthOf(2);
+
+    const binding1 = bindings[0];
+    {
+      let varBinding = binding1.get("a1") as FunctionApplicationNode;
+      expect(varBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
+      expect(varBinding.name).to.be.equal("b3");
+    }
+
+    {
+      let varBinding = binding1.get("a2") as VariableNode;
+      expect(varBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
+      expect(varBinding.name).to.be.equal("b2");
+    }
+
+    const binding2 = bindings[1];
+    {
+      let varBinding = binding2.get("a1") as FunctionApplicationNode;
+      expect(varBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
+      expect(varBinding.name).to.be.equal("b3");
+    }
+
+    {
+      let varBinding = binding2.get("a2") as FunctionApplicationNode;
+      expect(varBinding.name).to.be.equal("g");
+      expect(varBinding.type).to.be.equal(InstantiationNodeType.FUNC_APPL);
+      expect(varBinding.arguments).to.have.lengthOf(1);
+      expect((varBinding.arguments[0] as VariableNode).name).to.be.equal("b3");
+    }
+  });
 })
 
 function parseTerm(term : string) : Expr {
