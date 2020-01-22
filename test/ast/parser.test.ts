@@ -103,6 +103,12 @@ describe('Parser', () => {
     expect(funcAppl(rhs.lhs).name).to.equal("h");
     expect(funcAppl(rhs.rhs).name).to.equal("i");
   });
+
+  /* TODO: implement easier and more stable serialization (excluding location information from AST)
+  it('should parse complex expression', () => {
+    const expr = (parseTerm("x = x and ((f(x) = l) or (f(x) = x))") as any)[0] as Constant;
+    console.log(JSON.stringify(expr));
+  });*/
 });
 
 function parseTerm(term : string) : Expr {
