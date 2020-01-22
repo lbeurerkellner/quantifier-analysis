@@ -6,13 +6,18 @@
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.3.2",
     "@testing-library/user-event": "^7.1.2",
+    "@types/chai": "^4.2.7",
     "@types/jest": "^24.0.0",
+    "@types/mocha": "^5.2.7",
     "@types/node": "^12.0.0",
     "@types/pegjs": "^0.10.1",
     "@types/react": "^16.9.0",
     "@types/react-dom": "^16.9.0",
+    "chai": "^4.2.0",
+    "cross-env": "^6.0.3",
     "cytoscape": "^3.13.0",
     "cytoscape-cola": "^2.3.0",
+    "mocha": "^7.0.0",
     "monaco-editor": "^0.19.3",
     "monaco-editor-webpack-plugin": "^1.8.2",
     "pegjs": "^0.10.0",
@@ -21,13 +26,14 @@
     "react-dom": "^16.12.0",
     "react-monaco-editor": "^0.33.0",
     "react-scripts": "3.3.0",
+    "ts-node": "^8.6.2",
     "typescript": "~3.7.2"
   },
   "scripts": {
     "start": "react-app-rewired start",
     "build": "react-app-rewired build",
-    "test": "react-app-rewired test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "test": "util/run-tests.sh"
   },
   "eslintConfig": {
     "extends": "react-app"
