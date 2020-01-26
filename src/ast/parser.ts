@@ -31,6 +31,7 @@ export interface Formula extends AstNode {
 }
 export interface Variable extends AstNode {
     name : string
+    globalName : string
 }
 export type Expr = ExprNode|Expr[]
 export interface ExprNode extends AstNode {}
@@ -40,6 +41,8 @@ export interface FunctionApplicationExpr extends ExprNode {
 }
 export interface Constant extends ExprNode {
     name : string
+    // the variable this constant is referencing (i.e. instance of a quantified variable)
+    referencesVariable : Variable|null
 }
 
 export function isBinaryOperation(expr : Expr) : boolean {
@@ -77,21 +80,33 @@ class ASTPreprocessor {
             formulas: root.formulas.map(this.processFormula.bind(this))
         }
     }
-    processFormula(formula : Formula) : Formula {
-        return {
+    processFormula(formula : Formula, index : number) : Formula {
+        const processedFormula = {
             type: formula.type,
-            variables: formula.variables,
-            pattern: formula.pattern.map(this.processFunctionApplication.bind(this)),
-            body: this.processExpr(formula.body),
+            variables: formula.variables.map(this.processVariable.bind(this, index)),
+            pattern: null as unknown as FunctionApplicationExpr[],
+            body: null as unknown as Expr,
             location: formula.location,
             parent: null
         }
+        processedFormula.pattern = formula.pattern.map(p => this.processNode(p, processedFormula)) as FunctionApplicationExpr[];
+        processedFormula.body = this.processExpr(formula.body, processedFormula);
+        return processedFormula;
     }
 
-    processExpr(expr : Expr) : Expr {
+    processVariable(index : number, variable : Variable) : Variable {
+        const v : Variable = {
+            ...variable,
+            name: variable.name,
+            globalName: "f" + index + "." + variable.name
+        }
+        return v;
+    }
+
+    processExpr(expr : Expr, parentFormula : Formula) : Expr {
         // non-array expressions (leaves) do not need to be processed
         if (!Array.isArray(expr)) {
-            return this.processNode(expr as ExprNode) as Expr;
+            return this.processNode(expr as ExprNode, parentFormula) as Expr;
         }
         
         let exprs = expr as Expr[];
@@ -101,14 +116,14 @@ class ASTPreprocessor {
         // merge sibling AST nodes adjacent to "=" expression node
         for (let i=0; i<exprs.length; i++) {
             if (Array.isArray(exprs[i])) {
-                expressions.push(this.processExpr(exprs[i]));
+                expressions.push(this.processExpr(exprs[i], parentFormula));
                 continue;
             }
             const e : ExprNode = exprs[i] as ExprNode;
 
             if (e.type === "=") {
                 const lhs = expressions.pop() as Expr;
-                const rhs = this.processExpr(exprs[i+1]);
+                const rhs = this.processExpr(exprs[i+1], parentFormula);
                 const loc = mergeRange(e.location, ...[lhs, rhs]
                     .filter(e => typeof e !== "undefined").map(e => locationOfExpr(e)));
                 expressions.push({
@@ -119,7 +134,8 @@ class ASTPreprocessor {
                 } as BinaryOperation)
                 i += 1;
             } else {
-                expressions.push(e);
+                // TODO check why referencesVariables is not populated / constants not processed
+                expressions.push(this.processNode(e, parentFormula));
             }
         }
         exprs = Array.from(expressions);
@@ -178,7 +194,7 @@ class ASTPreprocessor {
         return expressions;
     }
 
-    processNode(astNode : AstNode) : AstNode {
+    processNode(astNode : AstNode, parentFormula : Formula) : AstNode {
         // skip occurrences of null in the AST
         if (astNode === null || typeof astNode === "undefined") {
             return astNode;
@@ -186,10 +202,11 @@ class ASTPreprocessor {
 
         switch (astNode.type) {
             case "formula":
-                return this.processFormula(astNode as Formula);
+                throw new Error("Cannot process nested Formula instances.")
             case "variable":
-            case "constant":
                 return astNode;
+            case "constant":
+                return this.processConstant(astNode as Constant, parentFormula);
             case "=":
             case "and":
             case "or": {
@@ -197,8 +214,8 @@ class ASTPreprocessor {
                 
                 let result = Object.assign(astNode, {}) as BinaryOperation;
                 
-                result.lhs = this.processExpr(binOp.lhs);
-                result.rhs = this.processExpr(binOp.rhs);
+                result.lhs = this.processExpr(binOp.lhs, parentFormula);
+                result.rhs = this.processExpr(binOp.rhs, parentFormula);
                 result.operation = binOp.operation;
                 
                 return result;
@@ -211,7 +228,7 @@ class ASTPreprocessor {
                     location: notExpr.location
                 } as NotExpr;
 
-                result.operand = this.processExpr(notExpr.operand);
+                result.operand = this.processExpr(notExpr.operand, parentFormula);
                 
                 return result;
             }
@@ -219,13 +236,21 @@ class ASTPreprocessor {
                 const funcAppl = astNode as FunctionApplicationExpr;
 
                 let result = Object.assign(funcAppl, {}) as FunctionApplicationExpr;
-                result.args = funcAppl.args.map(a => this.processExpr(a));
+                result.args = funcAppl.args.map(a => this.processExpr(a, parentFormula));
 
                 return result;
             default:
                 console.log("Unhandled AST node type in preprocessing", astNode);
                 return astNode;
         }
+    }
+
+    processConstant(constant : Constant, parentFormula : Formula) : Constant {
+        const c : Constant = {
+            ...constant,
+            referencesVariable: parentFormula.variables.find(v => v.name === constant.name) || null
+        }
+        return c;
     }
     
     processFunctionApplication(expr : FunctionApplicationExpr) {

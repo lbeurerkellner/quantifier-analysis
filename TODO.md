@@ -5,7 +5,11 @@
         - E-Matching DONE
         - apply E-Matching to each pair of term node and formula pattern 
             -> add UI affordance for every valid match/binding which triggers 
-                the instantiation of the corresponding formula in the instantiation graph
+                the instantiation of the corresponding formula in the instantiation graph DONE
+        - choose binding on forward stepping
+
+    - layouting
+    
     - backward stepping
         - Body-Matching
         - apply body-matching to each pair of (non-instantiated) term node and formula body (e.g. use prefix tree?)

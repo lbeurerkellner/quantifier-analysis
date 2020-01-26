@@ -1,5 +1,7 @@
+import { Formula } from './../ast/parser';
 import { AstNode } from '../ast/parser';
-import { QuantifierInstantiationNode, InstantiationNode, InstantiationNodeType, FunctionApplicationNode, VariableNode, ConstantNode, TermNode } from './instantiation-graph';
+import { QuantifierInstantiationNode, InstantiationNode, InstantiationNodeType, FunctionApplicationNode, VariableNode, ConstantNode, TermNode, InstantiationGraph } from './instantiation-graph';
+import { computePossibleForwardSteps } from './operations';
 
 const EdgeStyleMatches = {
     "line-color": "rgb(187, 100, 237)",
@@ -20,19 +22,23 @@ const EdgeStyleEquality = {
 
 export class InstantiationGraphCyTransformer {
     traces = new Map<string, AstNode>();
+    graph : InstantiationGraph = null as unknown as InstantiationGraph
     
     cache = new Map<InstantiationNode|Set<TermNode>, any[]>();
     idMap = new Map<InstantiationNode, string>();
 
+    formulas : Formula[] = []
+
     ctr = 0
 
-    transform(qis: QuantifierInstantiationNode[]): {graphDescription: any[], traces : Map<string, AstNode>} {
+    transform(graph: InstantiationGraph, formulas : Formula[]): {graphDescription: any[], traces : Map<string, AstNode>} {
         this.traces = new Map<string, AstNode>();
         this.ctr = 0;
+        this.graph = graph;
+        this.formulas = formulas;
 
-
-        qis.forEach((qi, idx) => {
-            this.transformNode(qi)
+        graph.entryNodes.forEach((n) => {
+            this.transformNode(n)
         });
 
         let description = Array.from(this.cache.values()).flatMap(v => v);
@@ -145,6 +151,14 @@ export class InstantiationGraphCyTransformer {
             nodes[0].data["border-width"] = "0pt";
         }
 
+        // check for potential forward steps
+        const fSteps = computePossibleForwardSteps(this.graph, fa, this.formulas);
+        nodes[0].data["forward-step-candidates"] = fSteps;
+        if (fSteps.length > 0) {
+            nodes[0].data["border-color"] = "green";
+            nodes[0].data["border-width"] = "4pt";
+        }
+
         // transform function arguments
         fa.arguments.forEach((a, idx) => {
             let targetId = this.transformNode(a);
@@ -163,8 +177,8 @@ export class InstantiationGraphCyTransformer {
             "background-color": "rgb(196, 69, 69)"
         } }];
         this.traces.set(nodeId, v.variable);
-
         this.idMap.set(v, nodeId);
+
         this.cache.set(v, nodes);
         // transform equivalence class edges
         this.transformEquivalenceClass(v.equivalenceClass);
@@ -221,8 +235,7 @@ export class InstantiationGraphCyTransformer {
 }
 
 /** 
- * Checks whether termNode or any of its parent reference nodes 
- * has an instantiator.
+ * Checks whether termNode or any of its parent reference nodes has an instantiator.
   */
 function hasInstantiator(termNode : TermNode) {
     if (termNode.instantiator.size > 0) {

@@ -6,8 +6,6 @@ import { FunctionApplicationExpr, Constant, NodeType } from './../ast/parser';
  * such that term represents an e-match of pattern.
  */
 export function match(pattern : FunctionApplicationExpr|Constant, term : TermNode, argumentIdx : number = 0) : Map<string, TermNode>[] {
-    const functionName = pattern.name;
-    
     // construct set of matching candidates (terms equivalent to term)
     const candidates = new Set(term.equivalenceClass) 
     candidates.add(term);
@@ -45,8 +43,9 @@ export function match(pattern : FunctionApplicationExpr|Constant, term : TermNod
                 return []; // name or type mismatch, not an e-match
             }
         } else if (pattern.type === NodeType.CONSTANT) {
+            const c = pattern as Constant;
             const binding = new Map<string, TermNode>();
-            binding.set(pattern.name, candidate);
+            binding.set(c.referencesVariable!.globalName, candidate);
             return [binding];
         } else {
             console.error("Encountered non-matchable term in match(): ", candidate);

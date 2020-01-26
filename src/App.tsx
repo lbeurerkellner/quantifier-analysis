@@ -2,26 +2,27 @@ import { editor, MarkerSeverity } from 'monaco-editor';
 import React from 'react';
 import { ASTCytoscapeTransformer } from './ast/ast-cytoscape-transformer';
 import { createMarker, createMarkerFromValidationError } from './ast/ast-utils';
-import { AstNode, Parser } from './ast/parser';
+import { AstNode, Parser, Root } from './ast/parser';
 import { Validator } from './ast/validator';
 import './css/App.css';
 import { SyntaxError } from './def/pegjs';
 import Editor from './Editor';
 import Graph from './Graph';
+import { forwardStep, InstantiationGraph, TermNode } from './instantiation-graph/instantiation-graph';
 import { InstantiationGraphCyTransformer } from './instantiation-graph/instantiation-graph-cy-transformer';
-import * as GraphOperations from "./instantiation-graph/operations";
 import State from './state';
-import { TermNode } from './instantiation-graph/instantiation-graph';
 
 
 // parser components and transformers
 const astTransformer = new ASTCytoscapeTransformer();
 
 interface AppState {
+  ast : Root|null
   astGraph: any[]
   traces : Map<string, AstNode>
 
-  instantiationGraph : any[]
+  instantiationGraph : InstantiationGraph|null
+  instantiationCyGraph : any[]
   instGraphTraces : Map<string, AstNode>
   
   markers: editor.IMarkerData[]
@@ -37,8 +38,10 @@ class App extends React.Component<{}, AppState> {
     this.parser = new Parser();
     
     this.state = {
+      ast: null,
       astGraph: [],
-      instantiationGraph: [],
+      instantiationGraph: null,
+      instantiationCyGraph: [],
       markers: [],
       traces: new Map<string, AstNode>(),
       instGraphTraces: new Map<string, AstNode>()
@@ -53,7 +56,11 @@ class App extends React.Component<{}, AppState> {
         <div className="vsplit">
           <Editor markerData={this.state.markers}/>
         </div>
-        <Graph graph={this.state.instantiationGraph} onTapNode={this.onTapNode.bind(this, "inst")} layout="breadthfirst"/>
+        <Graph 
+          graph={this.state.instantiationCyGraph} 
+          onTapNode={this.onTapNode.bind(this, "inst")}
+          onSecondaryTapNode={this.onSecondaryTapNode.bind(this, "inst")} 
+          layout="breadthfirst"/>
       </div>
     );
   }
@@ -69,7 +76,28 @@ class App extends React.Component<{}, AppState> {
     State.unregister(this.onStateUpdate.bind(this));
   }
 
-  onTapNode(graph : string, nodeId : string) {
+  onSecondaryTapNode(graph : string, nodeId : string, target : any) {
+    if (target.data("forward-step-candidates")) {
+      const candidates = target.data("forward-step-candidates");
+      if (candidates.length > 0) {
+        forwardStep(this.state.instantiationGraph!, candidates[0].formula, candidates[0].bindings);
+        
+        if (this.state.ast) {
+          this.setState({
+            instantiationGraph: this.state.instantiationGraph,
+              ...this.updateGraphRepresentation(this.state.instantiationGraph!, this.state.ast!)
+          })
+          console.log(this.state.instantiationGraph?.entryNodes);
+        } else {
+          throw new Error("Illegal Operation: Cannot perform a forward step if no AST (list of formula) is available.");
+        }
+        
+      }
+      console.log(target.data("forward-step-candidates"));
+    }
+  }
+
+  onTapNode(graph : string, nodeId : string, target : any) {
     if (this.state.traces) {
       const traces = graph === "ast" ? this.state.traces : this.state.instGraphTraces;
       if (traces.has(nodeId)) {
@@ -84,6 +112,14 @@ class App extends React.Component<{}, AppState> {
     }
   }
 
+  updateGraphRepresentation(instantiationGraph : InstantiationGraph, ast : Root) {
+    const {graphDescription: instGraphCyRepr,
+      traces: instGraphTraces} = new InstantiationGraphCyTransformer().transform(
+        instantiationGraph, ast.formulas);
+    
+    return {instantiationCyGraph: instGraphCyRepr, instGraphTraces: instGraphTraces}
+  }
+
   onStateUpdate(key : string, value : any) {
     if (key === "editorContent") {
       try {
@@ -94,20 +130,20 @@ class App extends React.Component<{}, AppState> {
         const errors = validator.errors;
         const {graphDescription, traces} = astTransformer.transform(ast);
 
-        this.setState({astGraph: graphDescription, traces: traces, markers: []})
+        this.setState({ast: ast, astGraph: graphDescription, traces: traces, markers: []})
 
         if (errors.length > 0) {
           this.setState({markers: errors.map(e => createMarkerFromValidationError(e))});
         } else {
           const formula = ast.formulas[0];
           const bindings = new Map<string, TermNode>();
-          const instGraphNodes = [GraphOperations.instantiateFormula(formula, bindings)] //, GraphOperations.instantiateFormula(formula, bindings)];
-          console.log(instGraphNodes);
-          
-          const {graphDescription: instGraphCyRepr,
-            traces: instGraphTraces} = new InstantiationGraphCyTransformer().transform(instGraphNodes);
-          
-          this.setState({instantiationGraph: instGraphCyRepr, instGraphTraces: instGraphTraces});
+          const instantiationGraph : InstantiationGraph = new InstantiationGraph();
+          instantiationGraph.instantiateFormula(formula, bindings);
+
+          this.setState({
+            instantiationGraph: instantiationGraph,
+            ...this.updateGraphRepresentation(instantiationGraph, ast)
+          });
         }
       } catch (error) {
         // construct IMarkerData from peg.SyntaxError

@@ -51,7 +51,8 @@ let LAYOUT_OPTIONS = {
 
 interface GraphProperties {
   graph : any[]
-  onTapNode : (nodeId : string) => void
+  onTapNode : (nodeId : string, target : any) => void
+  onSecondaryTapNode? : (nodeId : string, target : any) => void
 
   layout : string
 }
@@ -65,9 +66,17 @@ class Graph extends React.Component<GraphProperties, {}> {
 
     this.cy.on('tapstart', (event : any) => {
       if (typeof event.target !== "undefined" && typeof event.target.id === "function") {
-        this.props.onTapNode(event.target.id());
+        this.props.onTapNode(event.target.id(), event.target);
       }
     });
+
+    this.cy.on('cxttapstart', (event : any) => {
+      if (typeof event.target !== "undefined" && typeof event.target.id === "function") {
+        if (this.props.onSecondaryTapNode) {
+          this.props.onSecondaryTapNode(event.target.id(), event.target);
+        }
+      }
+    })
   }
   
   render() {
