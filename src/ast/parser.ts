@@ -16,11 +16,14 @@ export enum NodeType {
 
 export interface Root {
     formulas : Formula[]
+    inputText : string
 }
 
 export interface AstNode {
     type : NodeType
     location : InputRange
+
+    root : Root|null
 
     parent : AstNode|null
 }
@@ -76,19 +79,24 @@ export interface ParenthesisNode extends AstNode {
  */
 class ASTPreprocessor {
     process(root: Root) : Root {
-        return {
-            formulas: root.formulas.map(this.processFormula.bind(this))
-        }
+        const processedRoot = {
+            formulas: [] as Formula[],
+            inputText: root.inputText
+        };
+        processedRoot.formulas = root.formulas.map(this.processFormula.bind(this, root));
+
+        return processedRoot;
     }
-    processFormula(formula : Formula, index : number) : Formula {
-        const processedFormula = {
+    processFormula(root : Root, formula : Formula, index : number) : Formula {
+        const processedFormula : Formula = {
             type: formula.type,
             variables: formula.variables.map(this.processVariable.bind(this, index)),
             pattern: null as unknown as FunctionApplicationExpr[],
             body: null as unknown as Expr,
             location: formula.location,
-            parent: null
-        }
+            parent: null,
+            root: root
+        };
         processedFormula.pattern = formula.pattern.map(p => this.processNode(p, processedFormula)) as FunctionApplicationExpr[];
         processedFormula.body = this.processExpr(formula.body, processedFormula);
         return processedFormula;
@@ -307,7 +315,8 @@ export class Parser {
     }
 
     parse(content : string) : Root {
-        const rawAst = this.pegParser.parse(content);
+        const rawAst : Root = this.pegParser.parse(content);
+        rawAst.inputText = content;
         return this.preprocessor.process(rawAst);
     }
 }

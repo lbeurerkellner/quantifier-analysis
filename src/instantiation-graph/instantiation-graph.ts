@@ -226,14 +226,14 @@ export function forwardStep(graph : InstantiationGraph, formula : Formula, bindi
 /** 
  * Same as path(), but operates on InstantiationNode nodes and does not considers bindings. 
  */
-export function instantiatedPath(node : TermNode) : string {
+export function instantiatedPath(node : TermNode, globalNames : boolean = true) : string {
     switch (node.type) {
         case InstantiationNodeType.FUNC_APPL:
             const fa = node as FunctionApplicationNode;
-            return fa.name + "$(" + fa.arguments.map(a => instantiatedPath(a as any)).join(", ") + ")";
+            return fa.name + "(" + fa.arguments.map(a => instantiatedPath(a as any, globalNames)).join(", ") + ")";
         case InstantiationNodeType.VARIABLE:
             const v = node as VariableNode;        
-            return v.variable.globalName;
+            return globalNames ? v.variable.globalName : v.variable.name;
     }
     throw new Error("Unhandled instantiation graph element type in path computation " + node.type);
 }
@@ -246,7 +246,7 @@ export function path(node : FunctionApplicationExpr|Variable|Constant, bindings 
     switch (node.type) {
         case "func_application":
             const fa = node as FunctionApplicationExpr;
-            return fa.name + "$(" + fa.args.map(a => path(a as any, bindings)).join(", ") + ")";
+            return fa.name + "(" + fa.args.map(a => path(a as any, bindings)).join(", ") + ")";
         case "variable":
             return (node as Variable).globalName;
         case "constant":

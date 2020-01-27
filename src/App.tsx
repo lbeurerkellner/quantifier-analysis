@@ -12,6 +12,7 @@ import { forwardStep, InstantiationGraph, TermNode } from './instantiation-graph
 import { InstantiationGraphCyTransformer } from './instantiation-graph/instantiation-graph-cy-transformer';
 import State from './state';
 import ActionPopup from './ActionPopup';
+import { GraphOperationCandidate, GraphOperationType, ForwardStepCandidate } from './instantiation-graph/operations';
 
 
 // parser components and transformers
@@ -29,6 +30,7 @@ interface AppState {
   markers: editor.IMarkerData[]
 
   popupAnchor : {x : number, y : number}|null
+  operationCandidates : GraphOperationCandidate[]
 }
 
 class App extends React.Component<{}, AppState> {
@@ -44,12 +46,16 @@ class App extends React.Component<{}, AppState> {
     this.state = {
       ast: null,
       astGraph: [],
+      traces: new Map<string, AstNode>(),
+      
       instantiationGraph: null,
       instantiationCyGraph: [],
-      markers: [],
-      traces: new Map<string, AstNode>(),
       instGraphTraces: new Map<string, AstNode>(),
-      popupAnchor: null
+      
+      markers: [],
+      
+      popupAnchor: null,
+      operationCandidates: []
     }
   }
 
@@ -68,7 +74,11 @@ class App extends React.Component<{}, AppState> {
           onCanvasMove={this.onGraphCanvasMove.bind(this)}
           layout="breadthfirst"
           ref={ref => {this.graphViewOffsetLeft = ref?.graphContainer?.offsetLeft || 0;}}/>
-        <ActionPopup anchorPoint={this.state.popupAnchor || undefined}/>
+        <ActionPopup 
+          anchorPoint={this.state.popupAnchor || undefined} 
+          operationCandidates={this.state.operationCandidates}
+          onApplyOperation={this.onApplyGraphOperation.bind(this)}
+          />
       </div>
     );
   }
@@ -92,21 +102,29 @@ class App extends React.Component<{}, AppState> {
     if (target.data("forward-step-candidates")) {
       const candidates = target.data("forward-step-candidates");
       if (candidates.length > 0) {
-        /*forwardStep(this.state.instantiationGraph!, candidates[0].formula, candidates[0].bindings);
-        
-        if (this.state.ast) {
-          this.setState({
-            instantiationGraph: this.state.instantiationGraph,
-              ...this.updateGraphRepresentation(this.state.instantiationGraph!, this.state.ast!)
-          })
-          console.log(this.state.instantiationGraph?.entryNodes);
-        } else {
-          throw new Error("Illegal Operation: Cannot perform a forward step if no AST (list of formula) is available.");
-        }*/
         let pos = target.renderedPosition();
         pos = {x: this.graphViewOffsetLeft + pos.x, y: pos.y};
-        this.setState({popupAnchor: pos});
+        this.setState({popupAnchor: pos, operationCandidates: candidates});
       }
+    }
+  }
+
+  onApplyGraphOperation(operation : GraphOperationCandidate) {
+    if (operation.type === GraphOperationType.FORWARD_STEP) {
+      const fsc = operation as ForwardStepCandidate;
+      forwardStep(this.state.instantiationGraph!, fsc.formula, fsc.bindings);
+        
+      if (this.state.ast) {
+        this.setState({
+          instantiationGraph: this.state.instantiationGraph,
+            ...this.updateGraphRepresentation(this.state.instantiationGraph!, this.state.ast!)
+        })
+        console.log(this.state.instantiationGraph?.entryNodes);
+      } else {
+        throw new Error("Illegal Operation: Cannot perform a forward step if no AST (list of formula) is available.");
+      }
+    } else {
+      console.error("Graph operation ", operation.type, " cannot be handled.");
     }
   }
 

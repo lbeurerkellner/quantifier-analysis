@@ -24,6 +24,9 @@
     border-radius: 1pt;
     padding: 4pt;
 }
+.action-item .code pre {
+    margin: 0;
+}
 
 .action-popup .action-item:nth-child(1) {
     border-top: 0px solid #C8C8C8;
@@ -53,7 +56,10 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "HelveticaNeue-Light", "Ubuntu", "Droid Sans", sans-serif
 }
 
-.action-item .actions a{
+.action-item .actions button.action {
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
     color: #006AB1;
     text-decoration: none;
 }

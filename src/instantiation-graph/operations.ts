@@ -21,7 +21,21 @@ export function setEqual(lhs: TermNode, rhs: TermNode) {
     eqClass.forEach(t => t.equivalenceClass = eqClass);
 }
 
-interface ForwardStepCandidate {
+export enum GraphOperationType {
+    FORWARD_STEP = "forward_step",
+    BACKWARD_STEP = "backward_step"
+}
+
+export interface GraphOperationCandidate {
+    type : GraphOperationType
+}
+
+export interface BackwardStepCandidate extends GraphOperationCandidate {
+    formula : Formula
+    bindings : Map<string, TermNode>
+}
+
+export interface ForwardStepCandidate extends GraphOperationCandidate {
     formula : Formula
     bindings : Map<string, TermNode>
 }
@@ -41,7 +55,8 @@ export function computePossibleForwardSteps(instantiationGraph : InstantiationGr
                 .flatMap(binding => 
                 ({
                     formula: formula,
-                    bindings: binding
+                    bindings: binding,
+                    type: GraphOperationType.FORWARD_STEP
                 })
             )
         })
