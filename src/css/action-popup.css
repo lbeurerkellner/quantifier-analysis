@@ -1,0 +1,59 @@
+.action-popup {
+    position: absolute;
+    top: 2pt;
+    right: 2pt;
+    border: 1px solid #C8C8C8;
+    width: 320px;
+    background-color: #F3F3F3;
+    text-align: left;
+    overflow-y: scroll;
+    max-height: 180px;
+}
+
+.action-item h1 {
+    font-size: 10pt;
+    margin: 0;
+    font-weight: normal;
+}
+
+.action-item .code {
+    background-color: white;
+    display: block;
+    margin: 2pt;
+    margin-left: 0pt;
+    border-radius: 1pt;
+    padding: 4pt;
+}
+
+.action-popup .action-item:nth-child(1) {
+    border-top: 0px solid #C8C8C8;
+}
+
+.action-item {
+    width: 100%;
+    color: #4B4E52;
+    font-family: Menlo, Monaco, "Courier New", monospace;
+    font-size: 10pt;
+    border-top: 1px solid #C8C8C8;
+}
+
+.action-item .content {
+    padding: 4pt;
+}
+
+.action-item .actions {
+    background-color: #E7E7E7;
+    color: #006AB1;
+    font-size: 9pt;
+    padding-top: 4pt;
+    padding-left: 2pt;
+    padding-right: 2pt;
+    padding-bottom: 4pt;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "HelveticaNeue-Light", "Ubuntu", "Droid Sans", sans-serif
+}
+
+.action-item .actions a{
+    color: #006AB1;
+    text-decoration: none;
+}

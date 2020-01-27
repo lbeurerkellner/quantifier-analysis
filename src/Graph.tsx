@@ -53,6 +53,7 @@ interface GraphProperties {
   graph : any[]
   onTapNode : (nodeId : string, target : any) => void
   onSecondaryTapNode? : (nodeId : string, target : any) => void
+  onCanvasMove? : () => void
 
   layout : string
 }
@@ -60,13 +61,29 @@ interface GraphProperties {
 class Graph extends React.Component<GraphProperties, {}> {
   // cytoscape global object handle
   cy : any
+  graphContainer : HTMLDivElement|null = null
 
   componentDidMount() {
     this.cy.center();
 
+    this.cy.on('pan', () => {
+      if (this.props.onCanvasMove) {
+        this.props.onCanvasMove();
+      }
+    })
+
+    this.cy.on('zoom', () => {
+      if (this.props.onCanvasMove) {
+        this.props.onCanvasMove();
+      }
+    })
+    
     this.cy.on('tapstart', (event : any) => {
       if (typeof event.target !== "undefined" && typeof event.target.id === "function") {
         this.props.onTapNode(event.target.id(), event.target);
+      }
+      if (this.props.onCanvasMove) {
+        this.props.onCanvasMove();
       }
     });
 
@@ -81,7 +98,7 @@ class Graph extends React.Component<GraphProperties, {}> {
   
   render() {
     return (
-      <div className="graph">
+      <div className="graph" ref={(ref) => this.graphContainer = ref}>
         <CytoscapeComponent 
           elements={this.props.graph} 
           stylesheet={CytoscapeStylesheet}
