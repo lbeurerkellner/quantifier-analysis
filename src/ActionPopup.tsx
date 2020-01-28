@@ -34,10 +34,10 @@ class ActionPopup extends React.Component<ActionPopupProps, {}> {
 
             return (
                 <div className="action-popup" style={{"top": anchorPoint.y, "left": anchorPoint.x}}>
-                    {this.props.operationCandidates.map(c => {
+                    {this.props.operationCandidates.map((c, idx) => {
                         if (c.type === GraphOperationType.FORWARD_STEP) {
                             const actions = [{title: "Apply Forward Step", action: this.onApplyAction.bind(this, c)}];
-                            return (<ActionItem actions={actions}>
+                            return (<ActionItem actions={actions} key={idx}>
                                 <ForwardStepActionContent candidate={c as ForwardStepCandidate}/>
                             </ActionItem>)
                         } else {

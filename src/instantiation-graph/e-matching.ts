@@ -1,14 +1,23 @@
 import { TermNode, InstantiationNodeType, FunctionApplicationNode } from './instantiation-graph';
 import { FunctionApplicationExpr, Constant, NodeType } from './../ast/parser';
+import { setOf } from './util';
 
 /**
  * Returns a list of bindings that may be used to instantiate pattern 
  * such that term represents an e-match of pattern.
  */
-export function match(pattern : FunctionApplicationExpr|Constant, term : TermNode, argumentIdx : number = 0) : Map<string, TermNode>[] {
-    // construct set of matching candidates (terms equivalent to term)
-    const candidates = new Set(term.equivalenceClass) 
-    candidates.add(term);
+export function match(pattern : FunctionApplicationExpr|Constant, term : TermNode, 
+    includeEquivalenceClass : boolean, argumentIdx : number = 0) : Map<string, TermNode>[] {
+    
+    let candidates = new Set<TermNode>();
+    if (includeEquivalenceClass) {
+        // construct set of matching candidates (terms equivalent to term)
+        term.equivalenceClass.forEach(t => candidates.add(t));
+        candidates.add(term);
+    } else {
+        // only consider provided term and not its whole equivalence class
+        candidates.add(term);
+    }
 
     if (pattern.type === NodeType.CONSTANT && argumentIdx !== 0) {
         throw new Error("Invalid State: Cannot match against a specified argument with pattern being a variable.");
@@ -31,8 +40,8 @@ export function match(pattern : FunctionApplicationExpr|Constant, term : TermNod
                 (candidate as FunctionApplicationNode).name === pattern.name) {
                 const candidateFa = (candidate as FunctionApplicationNode);
                 
-                const argumentIndexBindings = match(arg, candidateFa.arguments[argumentIdx]);
-                const remainingBindings = match(pattern, term, argumentIdx+1);
+                const argumentIndexBindings = match(arg, candidateFa.arguments[argumentIdx], true);
+                const remainingBindings = match(pattern, term, true, argumentIdx+1);
 
                 return (argumentIndexBindings
                     .flatMap(bindings => remainingBindings.map(rb => 

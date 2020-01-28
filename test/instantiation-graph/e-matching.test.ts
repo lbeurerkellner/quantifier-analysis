@@ -1,8 +1,8 @@
-import { FunctionApplicationNode, VariableNode, InstantiationNodeType } from './../../src/instantiation-graph/instantiation-graph';
-import { Parser, Expr, FunctionApplicationExpr, Formula } from './../../src/ast/parser';
+import { FunctionApplicationNode, VariableNode, InstantiationNodeType, getAstElement, TermNode } from './../../src/instantiation-graph/instantiation-graph';
+import { Parser, Expr, FunctionApplicationExpr, Formula, NodeType, Constant, ExprNode } from './../../src/ast/parser';
 import { expect } from 'chai';
 import { match } from '../../src/instantiation-graph/e-matching';
-import { instantiateTerm, instantiateFormula } from '../../src/instantiation-graph/operations';
+import { InstantiationGraph, findTerms } from '../../src/instantiation-graph/instantiation-graph';
 
 describe('E-Matching', () => {
   it('should match single function application', () => {
@@ -10,7 +10,7 @@ describe('E-Matching', () => {
     expect(bindings).to.have.lengthOf(1);
 
     const binding = bindings[0];
-    const xBinding = binding.get("x") as VariableNode;
+    const xBinding = binding.get("f0.x") as VariableNode;
 
     expect(xBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
     expect(xBinding.name).to.be.equal("y");
@@ -21,7 +21,7 @@ describe('E-Matching', () => {
     expect(bindings).to.have.lengthOf(1);
 
     const binding = bindings[0];
-    const xBinding = binding.get("x") as FunctionApplicationNode;
+    const xBinding = binding.get("f0.x") as FunctionApplicationNode;
 
     expect(xBinding.type).to.be.equal(InstantiationNodeType.FUNC_APPL);
     expect(xBinding.name).to.be.equal("g");
@@ -45,8 +45,8 @@ describe('E-Matching', () => {
     expect(bindings).to.have.lengthOf(1);
 
     const binding = bindings[0];
-    const xBinding = binding.get("x") as VariableNode;
-    const yBinding = binding.get("y") as VariableNode;
+    const xBinding = binding.get("f0.x") as VariableNode;
+    const yBinding = binding.get("f0.y") as VariableNode;
 
     expect(xBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
     expect(xBinding.name).to.be.equal("a");
@@ -62,7 +62,7 @@ describe('E-Matching', () => {
     const binding = bindings[0];
   
     for (let idx of [1, 2, 3, 4, 5]) {
-      const varBinding = binding.get("a"+idx) as VariableNode;
+      const varBinding = binding.get("f0.a"+idx) as VariableNode;
       expect(varBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
       expect(varBinding.name).to.be.equal("b"+idx);
     }
@@ -75,7 +75,7 @@ describe('E-Matching', () => {
     const binding = bindings[0];
   
     {
-      let varBinding = binding.get("a1") as FunctionApplicationNode;
+      let varBinding = binding.get("f0.a1") as FunctionApplicationNode;
       expect(varBinding.type).to.be.equal(InstantiationNodeType.FUNC_APPL);
       expect(varBinding.name).to.be.equal("g");
       expect(varBinding.arguments).to.have.lengthOf(1);
@@ -83,7 +83,7 @@ describe('E-Matching', () => {
     }
 
     {
-      let varBinding = binding.get("a2") as VariableNode;
+      let varBinding = binding.get("f0.a2") as VariableNode;
       expect(varBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
       expect(varBinding.name).to.be.equal("b2");
     }
@@ -96,13 +96,13 @@ describe('E-Matching', () => {
     const binding = bindings[0];
   
     {
-      let varBinding = binding.get("a1") as FunctionApplicationNode;
+      let varBinding = binding.get("f0.a1") as FunctionApplicationNode;
       expect(varBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
       expect(varBinding.name).to.be.equal("b3");
     }
 
     {
-      let varBinding = binding.get("a2") as VariableNode;
+      let varBinding = binding.get("f0.a2") as VariableNode;
       expect(varBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
       expect(varBinding.name).to.be.equal("b2");
     }
@@ -114,26 +114,26 @@ describe('E-Matching', () => {
 
     const binding1 = bindings[0];
     {
-      let varBinding = binding1.get("a1") as FunctionApplicationNode;
+      let varBinding = binding1.get("f0.a1") as FunctionApplicationNode;
       expect(varBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
       expect(varBinding.name).to.be.equal("b3");
     }
 
     {
-      let varBinding = binding1.get("a2") as VariableNode;
+      let varBinding = binding1.get("f0.a2") as VariableNode;
       expect(varBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
       expect(varBinding.name).to.be.equal("b2");
     }
 
     const binding2 = bindings[1];
     {
-      let varBinding = binding2.get("a1") as FunctionApplicationNode;
+      let varBinding = binding2.get("f0.a1") as FunctionApplicationNode;
       expect(varBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
       expect(varBinding.name).to.be.equal("b3");
     }
 
     {
-      let varBinding = binding2.get("a2") as FunctionApplicationNode;
+      let varBinding = binding2.get("f0.a2") as FunctionApplicationNode;
       expect(varBinding.name).to.be.equal("g");
       expect(varBinding.type).to.be.equal(InstantiationNodeType.FUNC_APPL);
       expect(varBinding.arguments).to.have.lengthOf(1);
@@ -142,24 +142,47 @@ describe('E-Matching', () => {
   });
 })
 
+/** Synthesises a formula declaration with term as body. The formula automatically
+ * includes all quantified variables mentioned in term. */
+function synthesiseFormula(term : string) : string {
+  const parser = new Parser();
+  // preliminary parse, results in broken AST since not all variables in term
+  // may be declared on formula-level
+  const preliminaryAst = parser.parse("forall x {f(x)} " + term + ";");
+  const variableNames = (Array.from(new Set(findTerms(preliminaryAst.formulas[0].body)))
+    .filter(t => t.type && t.type === NodeType.CONSTANT) as Constant[])
+    .map(c => c.name).join(", ");
+  return `forall ${variableNames} {testPattern(${variableNames})} ${term};`;
+}
+
 function parseTerm(term : string) : Expr {
   const parser = new Parser();
-  const ast = parser.parse("forall x {f(x)} " + term + ";");
-
+  const ast = parser.parse(synthesiseFormula(term));
   return (ast.formulas[0].body as any)[0];
 }
 
 function parseFormula(formula : string) : Formula {
   const parser = new Parser();
-  const ast = parser.parse(formula);
-
+  let ast = parser.parse(formula);
   return ast.formulas[0];
 }
 
-function matchBinding(pattern : string, term : string) {
+/** Returns all possible bindings of matching the first term in the term declaration
+ * given by {@code term} with pattern {@code pattern}. */
+function matchBinding(pattern : string, term : string) : Map<string, TermNode>[] {
   const astPattern = parseTerm(pattern) as FunctionApplicationExpr;
-  const astFormula = parseFormula("forall x {f(x)} " + term + ";");
-  const instantiatedFormula = instantiateFormula(astFormula);
+  const astTermFormula = parseFormula(synthesiseFormula(term));
+  const termAstNode = findTerms(astTermFormula.body)[0]
 
-  return match(astPattern, Array.from(instantiatedFormula.instantiated.values())[0]);
+  const iGraph = new InstantiationGraph();
+  const instantiatedFormula = iGraph.instantiateFormula(astTermFormula);
+
+  const termNode = Array.from(instantiatedFormula.instantiated.values())
+    .find(termNode => getAstElement(termNode) === termAstNode);
+
+  if (!termNode) {
+    console.log(termAstNode);
+    throw new Error("Failed to find term node for " + termAstNode);
+  }
+  return match(astPattern, termNode!, false);
 }

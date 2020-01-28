@@ -1,6 +1,7 @@
-import { Expr, isBinaryOperation, Constant, NotExpr, ExprNode, NodeType } from './../ast/parser';
+import { Expr, isBinaryOperation, Constant, NotExpr, ExprNode, NodeType, AstNode } from './../ast/parser';
 import { BinaryOperation, Formula, FunctionApplicationExpr, Variable } from '../ast/parser';
 import * as GraphOperations from "./operations"
+import {setOf} from "./util"
 
 export enum InstantiationNodeType {
     QUANTIFIER = "quantifier",
@@ -83,8 +84,6 @@ export class InstantiationGraph {
         
         this.entryNodes.add(q);
 
-        console.log(this.cache);
-
         return q;
     }
 
@@ -160,6 +159,8 @@ export class InstantiationGraph {
             if (bindings.has(c.referencesVariable!.globalName)) {
                 // just use binding here
                 resultNode = bindings.get(c.referencesVariable!.globalName)!
+                // replace bound term with a possibly cached instance
+                resultNode = this.cache.get(instantiatedPath(resultNode)) || resultNode;
             } else {
                 // check for cached node
                 if (resultNode && term.type as string !== resultNode.type as string) {
@@ -206,22 +207,6 @@ export class InstantiationGraph {
     }
 }
 
-export function forwardStep(graph : InstantiationGraph, formula : Formula, bindings : Map<string, TermNode>) : QuantifierInstantiationNode {
-    // augment binding to complete binding
-    formula.variables.filter(v => !bindings.has(v.globalName)).forEach(v => {
-        const variableNode : VariableNode = {
-            type: InstantiationNodeType.VARIABLE,
-            name: v.name,
-            instantiator: setOf(),
-            equivalenceClass: setOf(),
-            references: setOf(),
-            variable: v
-        };
-        bindings.set(v.globalName, variableNode)
-    });
-
-    return graph.instantiateFormula(formula, bindings);
-}
 
 /** 
  * Same as path(), but operates on InstantiationNode nodes and does not considers bindings. 
@@ -264,7 +249,7 @@ export function path(node : FunctionApplicationExpr|Variable|Constant, bindings 
     throw new Error("Unhandled AST element type in path computation " + node.type);
 }
 
-export function shadowBindings(parentBinding : Map<string, TermNode>, binding : Map<string, TermNode>) {
+/*export function shadowBindings(parentBinding : Map<string, TermNode>, binding : Map<string, TermNode>) {
     const result = new Map<string, TermNode>();
     Array.from(parentBinding.entries()).forEach(e => {
         result.set(e[0], e[1]);
@@ -273,7 +258,7 @@ export function shadowBindings(parentBinding : Map<string, TermNode>, binding : 
         result.set(e[0], e[1]);
     })
     return result;
-}
+}*/
 
 
 /**
@@ -308,7 +293,7 @@ function findEqualities(expr : Expr) : BinaryOperation[] {
  * Returns all (sub-)terms (function applications and constants) contained 
  * in the given expression.
  */
-function findTerms(expr : Expr) : ExprNode[] {
+export function findTerms(expr : Expr) : ExprNode[] {
     if (expr === null) {
         return [];
     }
@@ -335,6 +320,15 @@ function findTerms(expr : Expr) : ExprNode[] {
     }
 }
 
-function setOf<T>(...elements : T[]) : Set<T> {
-    return new Set<T>(elements.filter(e => e !== null));
-}
+export function getAstElement(instantiationNode : InstantiationNode) : AstNode|null {
+    switch (instantiationNode.type) {
+        case InstantiationNodeType.CONSTANT:
+            return (instantiationNode as ConstantNode).constant;
+        case InstantiationNodeType.FUNC_APPL:
+            return (instantiationNode as FunctionApplicationNode).functionApplication;
+        case InstantiationNodeType.QUANTIFIER:
+            return (instantiationNode as QuantifierInstantiationNode).formula;
+        case InstantiationNodeType.VARIABLE:
+            return (instantiationNode as VariableNode).variable;
+    }
+} 
