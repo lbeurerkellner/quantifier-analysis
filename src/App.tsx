@@ -9,7 +9,7 @@ import { SyntaxError } from './def/pegjs';
 import Editor from './Editor';
 import Graph from './Graph';
 import { InstantiationGraph, TermNode } from './instantiation-graph/instantiation-graph';
-import { forwardStep } from './instantiation-graph/operations';
+import { forwardStep, completeBindings } from './instantiation-graph/operations';
 import { InstantiationGraphCyTransformer } from './instantiation-graph/instantiation-graph-cy-transformer';
 import State from './state';
 import ActionPopup from './ActionPopup';
@@ -167,6 +167,7 @@ class App extends React.Component<{}, AppState> {
           const formula = ast.formulas[0];
           const bindings = new Map<string, TermNode>();
           const instantiationGraph : InstantiationGraph = new InstantiationGraph(ast.formulas);
+          completeBindings(formula, bindings);
           instantiationGraph.instantiateFormula(formula, bindings);
 
           this.setState({
