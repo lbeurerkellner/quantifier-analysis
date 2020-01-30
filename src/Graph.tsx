@@ -78,6 +78,14 @@ class Graph extends React.Component<GraphProperties, {}> {
       }
     })
     
+    this.cy.on('tap', (event : any) => {
+      if (typeof event.target !== "undefined" && typeof event.target.id === "function") {
+        if (this.props.onSecondaryTapNode) {
+          this.props.onSecondaryTapNode(event.target.id(), event.target);
+        }
+      }
+    });
+
     this.cy.on('tapstart', (event : any) => {
       if (typeof event.target !== "undefined" && typeof event.target.id === "function") {
         this.props.onTapNode(event.target.id(), event.target);

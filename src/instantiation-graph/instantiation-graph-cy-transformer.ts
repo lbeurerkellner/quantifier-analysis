@@ -1,7 +1,5 @@
-import { Formula } from './../ast/parser';
 import { AstNode } from '../ast/parser';
 import { QuantifierInstantiationNode, InstantiationNode, InstantiationNodeType, FunctionApplicationNode, VariableNode, ConstantNode, TermNode, InstantiationGraph } from './instantiation-graph';
-import { computePossibleForwardSteps } from './operations';
 
 const EdgeStyleMatches = {
     "line-color": "rgb(187, 100, 237)",
@@ -27,15 +25,12 @@ export class InstantiationGraphCyTransformer {
     cache = new Map<InstantiationNode|Set<TermNode>, any[]>();
     idMap = new Map<InstantiationNode, string>();
 
-    formulas : Formula[] = []
-
     ctr = 0
 
-    transform(graph: InstantiationGraph, formulas : Formula[]): {graphDescription: any[], traces : Map<string, AstNode>} {
+    transform(graph: InstantiationGraph): {graphDescription: any[], traces : Map<string, AstNode>} {
         this.traces = new Map<string, AstNode>();
         this.ctr = 0;
         this.graph = graph;
-        this.formulas = formulas;
 
         graph.entryNodes.forEach((n) => {
             this.transformNode(n)
@@ -151,10 +146,9 @@ export class InstantiationGraphCyTransformer {
             nodes[0].data["border-width"] = "0pt";
         }
 
-        // check for potential forward steps
-        const fSteps = computePossibleForwardSteps(this.graph, fa, this.formulas);
-        nodes[0].data["forward-step-candidates"] = fSteps;
-        if (fSteps.length > 0) {
+        // mark nodes which enable graph operations in green
+        nodes[0].data["forward-step-candidates"] = fa.operations;
+        if (fa.operations.length > 0) {
             nodes[0].data["border-color"] = "green";
             nodes[0].data["border-width"] = "4pt";
         }

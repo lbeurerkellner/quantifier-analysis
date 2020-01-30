@@ -146,8 +146,7 @@ class App extends React.Component<{}, AppState> {
 
   updateGraphRepresentation(instantiationGraph : InstantiationGraph, ast : Root) {
     const {graphDescription: instGraphCyRepr,
-      traces: instGraphTraces} = new InstantiationGraphCyTransformer().transform(
-        instantiationGraph, ast.formulas);
+      traces: instGraphTraces} = new InstantiationGraphCyTransformer().transform(instantiationGraph);
     
     return {instantiationCyGraph: instGraphCyRepr, instGraphTraces: instGraphTraces}
   }
@@ -169,7 +168,7 @@ class App extends React.Component<{}, AppState> {
         } else {
           const formula = ast.formulas[0];
           const bindings = new Map<string, TermNode>();
-          const instantiationGraph : InstantiationGraph = new InstantiationGraph();
+          const instantiationGraph : InstantiationGraph = new InstantiationGraph(ast.formulas);
           instantiationGraph.instantiateFormula(formula, bindings);
 
           this.setState({

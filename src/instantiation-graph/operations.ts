@@ -1,9 +1,18 @@
-import { Formula } from './../ast/parser';
-import { match } from './e-matching';
+import { Formula, FunctionApplicationExpr } from './../ast/parser';
+import { match, mergeBindings } from './e-matching';
 import { TermNode, InstantiationGraph, InstantiationNodeType, QuantifierInstantiationNode, instantiatedPath, VariableNode } from './instantiation-graph';
 import {setOf} from "./util"
 
 type Binding = Map<string, TermNode>;
+
+/** 
+ * (Partial) EMatch, as given by the used binding
+ * and the matched term nodes in the instantiation graph.
+ */
+interface EMatch {
+    terms : Set<TermNode>
+    binding : Binding
+}
 
 /**
  * Adjusts lhs and rhs in such that they are considered
@@ -29,6 +38,8 @@ export enum GraphOperationType {
 
 export interface GraphOperationCandidate {
     type : GraphOperationType
+    // the operand terms of this operation
+    terms : Set<TermNode>
 }
 
 export interface BackwardStepCandidate extends GraphOperationCandidate {
@@ -39,6 +50,57 @@ export interface BackwardStepCandidate extends GraphOperationCandidate {
 export interface ForwardStepCandidate extends GraphOperationCandidate {
     formula : Formula
     bindings : Map<string, TermNode>
+}
+
+export function forwardStep(graph : InstantiationGraph, formula : Formula, bindings : Map<string, TermNode>) : QuantifierInstantiationNode {
+    // augment binding to complete binding
+    completeBindings(formula, bindings);
+    return graph.instantiateFormula(formula, bindings);
+}
+
+export function computePossibleForwardSteps(instantiationGraph : InstantiationGraph, terms : TermNode[], formulas : Formula[]) : ForwardStepCandidate[] {
+    const qNodes = (Array.from(instantiationGraph.entryNodes)
+        .filter(n => n.type === InstantiationNodeType.QUANTIFIER) as QuantifierInstantiationNode[]);
+    
+    // collect all possible e-matches of patterns to 'term'
+    const allPatterns = formulas.flatMap(f => f.pattern);
+    const patternMatches = new Map<FunctionApplicationExpr, EMatch[]>();
+    allPatterns.forEach(pattern => {
+        patternMatches.set(pattern, terms
+            .flatMap(term => 
+                match(pattern, term, false).map(b => ({terms: setOf(term), binding: b} as EMatch))
+            )
+        );
+    });
+
+    const candidates = formulas.flatMap(formula => {
+        const formulaQNodes = qNodes.filter(q => q.formula === formula);
+        const formulaQBindings = formulaQNodes.map(q => q.bindings);
+
+        const formulaPatternMatches = formula.pattern.map(p => patternMatches.get(p)!);
+        if (formulaPatternMatches.find(pm => pm!.length === 0)) {
+            return [];
+        }
+        const possiblePatternMatchCombination = Array.from(combinations(formulaPatternMatches));
+        return possiblePatternMatchCombination
+            // merge pattern bindings into instantiation binding
+            .map(pmc => mergeMatches(pmc))
+            // sort out incompatible pattern binding combinations
+            .filter(ematch => ematch !== null)
+            // augment binding to a complete one
+            .map(ematch => completeMatch(formula, ematch!)) 
+            // only include matches which have not been instantiated yet
+            .filter(ematch => {
+                return !formulaQBindings.find(b => equalBindings(b, ematch.binding))
+            })
+            .map(ematch => ({
+                formula: formula,
+                bindings: ematch.binding,
+                terms: ematch.terms,
+                type: GraphOperationType.FORWARD_STEP
+            }))
+    });
+    return candidates;
 }
 
 
@@ -65,38 +127,66 @@ export function completeBindings(formula : Formula, bindings : Map<string, TermN
     return bindings;
 }
 
-export function forwardStep(graph : InstantiationGraph, formula : Formula, bindings : Map<string, TermNode>) : QuantifierInstantiationNode {
-    // augment binding to complete binding
-    completeBindings(formula, bindings);
-    return graph.instantiateFormula(formula, bindings);
+
+export function *combinations<T>(bags : T[][]) : IterableIterator<T[]> {
+    if (bags.length === 1) {
+        for (let element of bags[0]) {
+            yield [element];
+        }
+        return;
+    } else {
+        const remainingBags = [...bags];
+        remainingBags.splice(0, 1);
+        for (let element of bags[0]) {
+            let remainingCombinations = combinations(remainingBags);
+            const iterator = remainingCombinations;
+            let nextElement = iterator.next();
+            while (!nextElement.done) {
+                yield ([element, ...nextElement.value]);
+                nextElement = iterator.next();
+            }
+        }
+    }
+    return;
 }
 
-export function computePossibleForwardSteps(instantiationGraph : InstantiationGraph, term : TermNode, formulas : Formula[]) : ForwardStepCandidate[] {
-    const qNodes = (Array.from(instantiationGraph.entryNodes)
-        .filter(n => n.type === InstantiationNodeType.QUANTIFIER) as QuantifierInstantiationNode[]);
-    
-    const candidates = formulas.flatMap(formula => {
-        const formulaQNodes = qNodes.filter(q => q.formula === formula);
-        const formulaQBindings = formulaQNodes.map(q => q.bindings);
 
-        return formula.pattern.flatMap(pattern => {
-            return match(pattern, term, false)
-                // complete bindings to bind all variable of formula
-                .map(binding => completeBindings(formula, binding))
-                // only include matches which have not been instantiated yet
-                .filter(binding => !formulaQBindings.find(b => equalBindings(b, binding)))
-                .flatMap(binding => 
-                ({
-                    formula: formula,
-                    bindings: binding,
-                    type: GraphOperationType.FORWARD_STEP
-                })
-            )
-        })
-    })
-    return candidates;
+/**
+ * Merges the given list of (partial) matches into one
+ * EMatch, if the corresponding bindings are compatible.
+ * 
+ * Returns {@code null} if the given set of matches are not compatible.
+ */
+function mergeMatches(matches : EMatch[]) : EMatch|null {
+    const binding = mergeBindings(matches.map(m => m.binding));
+    if (!binding) {
+        return null;
+    }
+    return {
+        binding: binding,
+        terms: new Set(matches.flatMap(m => Array.from(m.terms)))
+    };
 }
 
+/**
+ * Augments the bindings of the provided EMatch, to bind all
+ * variables in formula.
+ */
+function completeMatch(formula : Formula, match : EMatch) {
+    return {
+        binding: completeBindings(formula, match.binding),
+        terms: match.terms
+    };
+}
+
+/** String representation of binding for logging purposes. */
+function strBinding(binding : Binding) : string {
+    return Array.from(binding.entries())
+        .map(e => e[0] + " => " + instantiatedPath(e[1]))
+        .join(", ");
+}
+
+/** Returns whether two bindings can be considered equal. */
 function equalBindings(lhs : Binding, rhs : Binding) : boolean {
     if (lhs.size !== rhs.size) {
         return false;

@@ -1,5 +1,6 @@
 import { Expr, isBinaryOperation, Constant, NotExpr, ExprNode, NodeType, AstNode } from './../ast/parser';
 import { BinaryOperation, Formula, FunctionApplicationExpr, Variable } from '../ast/parser';
+import { GraphOperationCandidate } from "./operations"
 import * as GraphOperations from "./operations"
 import {setOf} from "./util"
 
@@ -43,6 +44,10 @@ export interface FunctionApplicationNode extends TermNode {
     functionApplication : FunctionApplicationExpr
 
     arguments : TermNode[]
+
+    // list of graph operations (forward/backward steps), this
+    // node enables
+    operations : GraphOperationCandidate[]
 }
 
 export interface VariableNode extends TermNode {
@@ -60,6 +65,12 @@ export class InstantiationGraph {
     entryNodes = new Set<InstantiationNode>();
 
     ctr = 0;
+
+    formulas : Formula[]
+
+    constructor(formulas : Formula[]) {
+        this.formulas = formulas;
+    }
 
     instantiateFormula(formula: Formula, bindings = new Map<string, TermNode>()): QuantifierInstantiationNode {
         let q = {
@@ -83,6 +94,9 @@ export class InstantiationGraph {
         })
         
         this.entryNodes.add(q);
+
+        // recompute set of possible graph operations
+        this.computeGraphOperationCandidates();
 
         return q;
     }
@@ -125,7 +139,8 @@ export class InstantiationGraph {
                 instantiator: setOf(),
                 references: setOf(),
                 matches: setOf(),
-                type: InstantiationNodeType.FUNC_APPL
+                type: InstantiationNodeType.FUNC_APPL,
+                operations: []
             } as FunctionApplicationNode;
 
             // save resulting node in cache
@@ -204,6 +219,81 @@ export class InstantiationGraph {
         }
 
         return resultNode!;
+    }
+
+    computeGraphOperationCandidates() {
+        // find set of function application nodes in instantiation graph
+        let funcAppls = new Array<FunctionApplicationNode>();
+        const visitor = new InstantiationGraphVisitor(node => {
+            if (node.type === InstantiationNodeType.FUNC_APPL) {
+                const fa = node as FunctionApplicationNode;
+                funcAppls.push(fa);
+                // clear previous operations
+                fa.operations = [];
+            }
+        });
+        this.entryNodes.forEach(q => visitor.visit(q));
+
+        const fSteps = GraphOperations.computePossibleForwardSteps(this, funcAppls, this.formulas);
+        fSteps.forEach(operation => {
+            Array.from(operation.terms).forEach(term => {
+                if (term.type === InstantiationNodeType.FUNC_APPL) {
+                    const fa = term as FunctionApplicationNode;
+                    fa.operations.push(operation);
+                }
+            })
+        });
+        // todo add backward steps too
+    }
+}
+
+/**
+ * A visitor implementation to traverse InstantiationGraph data structure.
+ */
+class InstantiationGraphVisitor {
+    visited : Set<InstantiationNode>
+    visitor : (node : InstantiationNode) => void
+
+    constructor(visitor : (node : InstantiationNode) => void) {
+        this.visited = new Set<InstantiationNode>();
+        this.visitor = visitor;
+    }
+
+    visit(node : InstantiationNode) {
+        if (this.visited.has(node)) {
+            return;
+        }
+
+        this.visited.add(node);
+        this.visitor(node);
+
+        switch (node.type) {
+            case InstantiationNodeType.QUANTIFIER:
+                const q = node as QuantifierInstantiationNode;
+                q.matched.forEach(n => this.visit(n))
+                q.instantiated.forEach(n => this.visit(n))
+                break;
+            case InstantiationNodeType.FUNC_APPL:
+                const fa = node as FunctionApplicationNode;
+                fa.arguments.forEach(a => this.visit(a));
+                fa.instantiator.forEach(q => this.visit(q))
+                fa.matches.forEach(q => this.visit(q))
+                fa.equivalenceClass.forEach(n => this.visit(n))
+                fa.references.forEach(n => this.visit(n))
+                break;
+            case InstantiationNodeType.VARIABLE:
+                const v = node as VariableNode;
+                v.instantiator.forEach(q => this.visit(q))
+                v.references.forEach(n => this.visit(n))
+                v.equivalenceClass.forEach(n => this.visit(n))
+                break;
+            case InstantiationNodeType.CONSTANT:
+                const c = node as ConstantNode;
+                c.instantiator.forEach(q => this.visit(q))
+                c.references.forEach(n => this.visit(n))
+                c.equivalenceClass.forEach(n => this.visit(n))
+                break;
+        }
     }
 }
 
@@ -331,4 +421,4 @@ export function getAstElement(instantiationNode : InstantiationNode) : AstNode|n
         case InstantiationNodeType.VARIABLE:
             return (instantiationNode as VariableNode).variable;
     }
-} 
+}

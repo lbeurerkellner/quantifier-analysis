@@ -174,7 +174,7 @@ function matchBinding(pattern : string, term : string) : Map<string, TermNode>[]
   const astTermFormula = parseFormula(synthesiseFormula(term));
   const termAstNode = findTerms(astTermFormula.body)[0]
 
-  const iGraph = new InstantiationGraph();
+  const iGraph = new InstantiationGraph(astTermFormula.root!.formulas);
   const instantiatedFormula = iGraph.instantiateFormula(astTermFormula);
 
   const termNode = Array.from(instantiatedFormula.instantiated.values())

@@ -1,6 +1,5 @@
 import { TermNode, InstantiationNodeType, FunctionApplicationNode } from './instantiation-graph';
 import { FunctionApplicationExpr, Constant, NodeType } from './../ast/parser';
-import { setOf } from './util';
 
 /**
  * Returns a list of bindings that may be used to instantiate pattern 
