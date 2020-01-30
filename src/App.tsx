@@ -4,7 +4,7 @@ import { ASTCytoscapeTransformer } from './ast/ast-cytoscape-transformer';
 import { createMarker, createMarkerFromValidationError } from './ast/ast-utils';
 import { AstNode, Parser, Root } from './ast/parser';
 import { Validator } from './ast/validator';
-import './css/App.css';
+import './css/app.css';
 import { SyntaxError } from './def/pegjs';
 import Editor from './Editor';
 import Graph from './Graph';
@@ -65,9 +65,7 @@ class App extends React.Component<{}, AppState> {
   render() {
     return (
       <div className="app">
-        <div className="vsplit">
-          <Editor markerData={this.state.markers}/>
-        </div>
+        <Editor markerData={this.state.markers}/>
         <Graph 
           graph={this.state.instantiationCyGraph} 
           onTapNode={this.onTapNode.bind(this, "inst")}

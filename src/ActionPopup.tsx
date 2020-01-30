@@ -60,7 +60,7 @@ class ActionPopup extends React.Component<ActionPopupProps, {}> {
                 </div>
             )
         } else {
-            return (<div/>);
+            return (<div style={{display: "none"}}/>);
         }
     }
   }
