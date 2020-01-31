@@ -16,6 +16,8 @@ export interface InstantiationNode {
 }
 
 export interface TermNode extends InstantiationNode {
+    name : string
+
     // the set of terms which are considered to be equivalent 
     // to this term (by established equalities in the instantiated formulas)
     equivalenceClass : Set<TermNode>
