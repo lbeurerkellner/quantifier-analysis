@@ -1,8 +1,9 @@
 import React from 'react';
 import './css/action-popup.css';
 
-import {GraphOperationCandidate, ForwardStepCandidate, GraphOperationType} from "./instantiation-graph/operations"
-import { instantiatedPath, TermNode } from './instantiation-graph/instantiation-graph';
+import {GraphOperationCandidate, ForwardStepCandidate, GraphOperationType, BackwardStepCandidate} from "./instantiation-graph/operations"
+import { instantiatedPath, TermNode, path } from './instantiation-graph/instantiation-graph';
+import { ExprNode } from './ast/parser';
 
 interface ActionPopupProps {
     anchorPoint? : {x : number, y : number}
@@ -52,10 +53,11 @@ class ActionPopup extends React.Component<ActionPopupProps, {}> {
                                 <ForwardStepActionContent candidate={c as ForwardStepCandidate}/>
                             </ActionItem>)
                         } else {
-                            // TODO support backward steps
-                            return (<div/>)
+                            const actions = [{title: "Apply Backward Step", action: this.onApplyAction.bind(this, c)}];
+                            return (<ActionItem actions={actions} key={idx}>
+                                <BackwardStepActionContent candidate={c as BackwardStepCandidate}/>
+                            </ActionItem>)
                         }
-                        
                     })}
                 </div>
             )
@@ -97,6 +99,28 @@ function getBindingDescription(binding : Map<string, TermNode>) {
         .sort()
         .join("\n");
 }
+
+function getBodyBindingDescription(bodyBinding : Map<TermNode, ExprNode>) {
+    return Array.from(bodyBinding.entries())
+        .map(e => instantiatedPath(e[0], false) + " -> " + path(e[1] as any, new Map<string, TermNode>(), false))
+        .sort()
+        .join("\n");
+}
+
+export const BackwardStepActionContent = (props : {candidate: BackwardStepCandidate}) => {
+    const formula = props.candidate.formula;
+    const formulaOffset = formula.location.start.offset
+    const formulaLength = formula.location.end.offset - formulaOffset;
+    const formulaString = formula.root?.inputText.substr(formulaOffset, formulaLength).trim();
+    return (<div>
+        <span className="code"><pre>{formulaString}</pre></span>
+        can be used to produce this term using graph replacements
+        <span className="code"><pre>
+        {getBodyBindingDescription(props.candidate.bodyBindings)}
+        </pre></span>
+    </div>);
+}
+
 
 export const ForwardStepActionContent = (props : {candidate: ForwardStepCandidate}) => {
     const formula = props.candidate.formula;

@@ -1,5 +1,5 @@
-import { ExprNode, Expr, Formula, NodeType, FunctionApplicationExpr } from './../ast/parser';
-import { TermNode, InstantiationNodeType, FunctionApplicationNode, VariableNode, ConstantNode, instantiatedPath } from './instantiation-graph';
+import { ExprNode, Expr, NodeType, FunctionApplicationExpr } from './../ast/parser';
+import { TermNode, InstantiationNodeType, FunctionApplicationNode, VariableNode, ConstantNode } from './instantiation-graph';
 
 export type BodyBinding = Map<TermNode, ExprNode>;
 

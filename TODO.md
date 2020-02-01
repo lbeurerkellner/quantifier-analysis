@@ -1,20 +1,22 @@
 ## TODO
 
 * model for instantiation graph 
-    - forward stepping
+    - forward stepping DONE
         - E-Matching DONE
         - apply E-Matching to each pair of term node and formula pattern 
             -> add UI affordance for every valid match/binding which triggers 
                 the instantiation of the corresponding formula in the instantiation graph DONE
-        - choose binding on forward stepping
+        - choose binding on forward stepping DONE
 
     - layouting
     
     - backward stepping
-        - Body-Matching
-        - apply body-matching to each pair of (non-instantiated) term node and formula body (e.g. use prefix tree?)
+        - Body-Matching DONE
+        - apply body-matching to each pair of (non-instantiated) term node and formula body (e.g. use prefix tree?) DONE 
             -> add UI affordance for every valid body match/binding which triggers
-                the instantiation of the corresponding formula in the instantiation graph
+                the instantiation of the corresponding formula in the instantiation graph DONE
+    
+        - TODO: merge obsolete quantifier instantiations (duplicates according to the used binding) after unification induced by backward match
     bonus:
     - improve traces to AST
     - fast body and trigger matching data structures

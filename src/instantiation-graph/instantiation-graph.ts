@@ -178,6 +178,11 @@ export class InstantiationGraph {
                 resultNode = bindings.get(c.referencesVariable!.globalName)!
                 // replace bound term with a possibly cached instance
                 resultNode = this.cache.get(instantiatedPath(resultNode)) || resultNode;
+
+                // extend existing node by additional 'reference' parent node
+                if (reference) {
+                    resultNode.references.add(reference);
+                }
             } else {
                 // check for cached node
                 if (resultNode && term.type as string !== resultNode.type as string) {
@@ -223,6 +228,22 @@ export class InstantiationGraph {
         return resultNode!;
     }
 
+    rebuildCache() {
+        // repopulate the cache by traversing this graph's entry nodes
+        this.cache = new Map<string, TermNode>();
+        const visitor = new InstantiationGraphVisitor(node => {
+            if ((node.type === InstantiationNodeType.CONSTANT) ||
+                (node.type === InstantiationNodeType.VARIABLE) ||
+                (node.type === InstantiationNodeType.FUNC_APPL)) {
+                    const termNode = node as (ConstantNode|VariableNode|FunctionApplicationNode)
+                    this.cache.set(instantiatedPath(termNode, true), termNode);
+            } else {
+                // nop
+            }
+        })
+        this.entryNodes.forEach(n => visitor.visit(n))
+    }
+
     computeGraphOperationCandidates() {
         // find set of function application nodes in instantiation graph
         let funcAppls = new Array<FunctionApplicationNode>();
@@ -245,7 +266,18 @@ export class InstantiationGraph {
                 }
             })
         });
-        // todo add backward steps too
+
+        const unexplainedFuncAppls = funcAppls.filter(fa => fa.instantiator.size === 0);
+
+        const bSteps = GraphOperations.computePossibleBackwardMatches(this, unexplainedFuncAppls, this.formulas);
+        bSteps.forEach(operation => {
+            Array.from(operation.terms).forEach(term => {
+                if (term.type === InstantiationNodeType.FUNC_APPL) {
+                    const fa = term as FunctionApplicationNode;
+                    fa.operations.push(operation);
+                }
+            })
+        })
     }
 }
 
@@ -319,11 +351,11 @@ export function instantiatedPath(node : TermNode, globalNames : boolean = true) 
  * Returns a string-based path which uniquely identifies the given AST node + the provided bindings in
  * the instantiation graph (binding is applied during path computation).
  */
-export function path(node : FunctionApplicationExpr|Variable|Constant, bindings : Map<string, TermNode>) : string {
+export function path(node : FunctionApplicationExpr|Variable|Constant, bindings : Map<string, TermNode>, globalNames : boolean = true) : string {
     switch (node.type) {
         case "func_application":
             const fa = node as FunctionApplicationExpr;
-            return fa.name + "(" + fa.args.map(a => path(a as any, bindings)).join(", ") + ")";
+            return fa.name + "(" + fa.args.map(a => path(a as any, bindings, globalNames)).join(", ") + ")";
         case "variable":
             return (node as Variable).globalName;
         case "constant":
@@ -331,9 +363,9 @@ export function path(node : FunctionApplicationExpr|Variable|Constant, bindings 
             if (constant.referencesVariable) {
                 const globalName = constant.referencesVariable!.globalName;
                 if (bindings.has(globalName)) {
-                    return instantiatedPath(bindings.get(globalName)!);
+                    return instantiatedPath(bindings.get(globalName)!, globalNames);
                 } else {
-                    return globalName;
+                    return globalNames ? globalName : constant.referencesVariable!.name;
                 }
             }
             return (node as Constant).name;

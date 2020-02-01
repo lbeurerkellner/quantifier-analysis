@@ -1,3 +1,4 @@
+import { GraphOperationType } from './operations';
 import { AstNode } from '../ast/parser';
 import { QuantifierInstantiationNode, InstantiationNode, InstantiationNodeType, FunctionApplicationNode, VariableNode, ConstantNode, TermNode, InstantiationGraph } from './instantiation-graph';
 
@@ -147,11 +148,16 @@ export class InstantiationGraphCyTransformer {
         }
 
         // mark nodes which enable graph operations in green
-        nodes[0].data["forward-step-candidates"] = fa.operations;
-        if (fa.operations.length > 0) {
+        nodes[0].data["graph-operation-candidates"] = fa.operations;
+        const enablesFSteps = fa.operations.length > 0 && fa.operations.find(o => o.type === GraphOperationType.FORWARD_STEP);
+        const enablesBSteps = fa.operations.length > 0 && fa.operations.find(o => o.type === GraphOperationType.BACKWARD_STEP);
+        if (enablesFSteps) {
             nodes[0].data["border-color"] = "green";
             nodes[0].data["border-width"] = "4pt";
-        }
+        } else if (enablesBSteps) {
+            nodes[0].data["border-color"] = "red";
+            nodes[0].data["border-width"] = "4pt";
+        } 
 
         // transform function arguments
         fa.arguments.forEach((a, idx) => {

@@ -1,7 +1,8 @@
-import { Formula, FunctionApplicationExpr } from './../ast/parser';
+import { Formula, FunctionApplicationExpr, ExprNode } from './../ast/parser';
 import { match, mergeBindings } from './e-matching';
-import { TermNode, InstantiationGraph, InstantiationNodeType, QuantifierInstantiationNode, instantiatedPath, VariableNode } from './instantiation-graph';
+import { TermNode, InstantiationGraph, InstantiationNodeType, QuantifierInstantiationNode, instantiatedPath, VariableNode, findTerms, ConstantNode, FunctionApplicationNode } from './instantiation-graph';
 import {setOf} from "./util"
+import { bodyMatch } from './body-matching';
 
 type Binding = Map<string, TermNode>;
 
@@ -42,14 +43,14 @@ export interface GraphOperationCandidate {
     terms : Set<TermNode>
 }
 
-export interface BackwardStepCandidate extends GraphOperationCandidate {
+export interface ForwardStepCandidate extends GraphOperationCandidate {
     formula : Formula
     bindings : Map<string, TermNode>
 }
 
-export interface ForwardStepCandidate extends GraphOperationCandidate {
+export interface BackwardStepCandidate extends GraphOperationCandidate {
     formula : Formula
-    bindings : Map<string, TermNode>
+    bodyBindings : Map<TermNode, ExprNode>
 }
 
 export function forwardStep(graph : InstantiationGraph, formula : Formula, bindings : Map<string, TermNode>) : QuantifierInstantiationNode {
@@ -103,6 +104,133 @@ export function computePossibleForwardSteps(instantiationGraph : InstantiationGr
     return candidates;
 }
 
+export function backwardStep(graph : InstantiationGraph, formula : Formula, bodyBindings : Map<TermNode, ExprNode>) {
+    const bindings = new Map<string, TermNode>();
+    completeBindings(formula, bindings);
+
+    graph.cache.clear();
+    const replacementPairs : Map<TermNode, TermNode> = new Map(Array.from(bodyBindings.entries()).map(entry => {
+        return [entry[0], graph.instantiateTerm(entry[1], bindings, null)]
+    }));
+
+    // replace TermNodes pairs as given by bodyBindings
+    for (let pair of Array.from(replacementPairs.entries())) {
+        merge(graph, pair[0], pair[1]);
+    }
+
+    // replace occurrences in bindings
+    graph.entryNodes.forEach(n => {
+        if (n.type === InstantiationNodeType.QUANTIFIER) {
+            const q = n as QuantifierInstantiationNode;
+            q.bindings = new Map(Array.from(q.bindings.entries())
+                .map(e => [e[0], replacementPairs.has(e[1]) ? replacementPairs.get(e[1])! : e[1]])
+            );
+        }
+    });
+
+    // rebuild graph cache, since the path of nodes may have changed by this backward step
+    graph.rebuildCache();
+
+    // add new backward-step instantiation of formula
+    graph.instantiateFormula(formula, bindings);
+
+    // recompute set of possible graph operation candidates
+    graph.computeGraphOperationCandidates()
+
+    console.log(graph);
+}
+
+export function merge(graph : InstantiationGraph, oldTermNode : TermNode, newTermNode : TermNode) {
+    console.log("Merge", instantiatedPath(oldTermNode), instantiatedPath(newTermNode));
+    if (oldTermNode.type === InstantiationNodeType.CONSTANT || oldTermNode.type === InstantiationNodeType.VARIABLE) {
+        const variableOrConstant = oldTermNode as (VariableNode|ConstantNode);
+        // .instantiator
+        variableOrConstant.instantiator.forEach(q => q.instantiated.delete(oldTermNode));
+        // not to be unified since newTermNode was not instantiated by oldTermNode's instantiator
+        
+        // .equivalenceClass (maintain equalities over oldTermNode for newTermNode)
+        const eqClass = new Set(variableOrConstant.equivalenceClass);
+        eqClass.delete(variableOrConstant);
+        eqClass.forEach(e => newTermNode.equivalenceClass.add(e))
+
+        // .references (rewire references to oldTermNode to newTermNode)
+        variableOrConstant.references.forEach(r => newTermNode.references.add(r));
+        variableOrConstant.references.forEach(r => rewireReference(graph, r, oldTermNode, newTermNode));
+    } else if (oldTermNode.type === InstantiationNodeType.FUNC_APPL) {
+        const funcAppl = oldTermNode as FunctionApplicationNode;
+        const newFuncAppl = newTermNode as FunctionApplicationNode;
+
+        if (newFuncAppl.type !== InstantiationNodeType.FUNC_APPL) {
+            throw new Error("Cannot unify non-function application term " + newFuncAppl + " with function application.");
+        }
+        // .instantiator
+        funcAppl.instantiator.forEach(q => q.instantiated.delete(oldTermNode));
+        // not to be unified since newTermNode was not instantiated by oldTermNode's instantiator
+        
+        // .equivalenceClass (maintain equalities over oldTermNode for newTermNode)
+        const eqClass = new Set(funcAppl.equivalenceClass);
+        eqClass.delete(funcAppl);
+        eqClass.forEach(e => newTermNode.equivalenceClass.add(e))
+
+        // .references (rewire references to oldTermNode to newTermNode)
+        funcAppl.references.forEach(r => newTermNode.references.add(r));
+        funcAppl.references.forEach(r => rewireReference(graph, r, oldTermNode, newTermNode));
+
+        // .arguments (remove references from oldTermNode to its arguments)
+        funcAppl.arguments.forEach(a => a.references.delete(funcAppl));
+
+        // .matches
+        funcAppl.matches.forEach(m => newFuncAppl.matches.add(m));
+        funcAppl.matches.forEach(q => q.matched.delete(funcAppl));
+        funcAppl.matches.forEach(q => q.matched.add(newFuncAppl));
+    } else {
+        throw new Error("Cannot unify unhandled instantiation graph node " + oldTermNode.type)
+    }
+
+    // additionally unify function application which now refer to the same arguments
+    const sortedByPath = Array.from(newTermNode.references)
+        .map(r => ({node: r, path: instantiatedPath(r)}))
+        .sort((a, b) => a.path < b.path ? -1 : (a.path === b.path ? 0 : 1));
+    for (var i=1; i<sortedByPath.length; i++) {
+        const p = sortedByPath[i].path;
+        if (sortedByPath[i-1].path === p) {
+            merge(graph, sortedByPath[i-1].node, sortedByPath[i].node);
+        }
+    }
+}
+
+export function rewireReference(graph : InstantiationGraph, referenceFa : FunctionApplicationNode, 
+    oldTarget : TermNode, newTarget : TermNode) {
+
+    console.log("Rewire reference to", oldTarget, "in", referenceFa);
+
+    referenceFa.arguments = referenceFa.arguments.map(a => {
+        if (a === oldTarget) {
+            return newTarget;
+        }
+        return a;
+    });
+}
+
+export function computePossibleBackwardMatches(instantiationGraph : InstantiationGraph, terms : TermNode[], formulas : Formula[]) : BackwardStepCandidate[] {
+    return terms.flatMap(termNode => {
+        return formulas.flatMap(formula => {
+            const formulaTerms = findTerms(formula.body);
+            
+            return formulaTerms.flatMap(term => { // determine set of matching formula terms
+                return bodyMatch(term, termNode);
+            }).map(bodyBinding => { // construct backward-step candidates from body bindings
+                const b : BackwardStepCandidate = {
+                    formula: formula,
+                    bodyBindings: bodyBinding,
+                    terms: new Set([termNode]),
+                    type: GraphOperationType.BACKWARD_STEP
+                };
+                return b;
+            })
+        })
+    });
+}
 
 /**
  * Completes the provided bindings to be used as an instantiating binding 
@@ -180,7 +308,7 @@ function completeMatch(formula : Formula, match : EMatch) {
 }
 
 /** String representation of binding for logging purposes. */
-function strBinding(binding : Binding) : string {
+export function strBinding(binding : Binding) : string {
     return Array.from(binding.entries())
         .map(e => e[0] + " => " + instantiatedPath(e[1]))
         .join(", ");
