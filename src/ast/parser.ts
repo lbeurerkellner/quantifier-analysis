@@ -28,6 +28,7 @@ export interface AstNode {
     parent : AstNode|null
 }
 export interface Formula extends AstNode {
+    name : string
     variables: Variable[]
     pattern: FunctionApplicationExpr[]
     body: Expr
@@ -83,13 +84,14 @@ class ASTPreprocessor {
             formulas: [] as Formula[],
             inputText: root.inputText
         };
-        processedRoot.formulas = root.formulas.map(this.processFormula.bind(this, root));
+        processedRoot.formulas = root.formulas.map(this.processFormula.bind(this, processedRoot));
 
         return processedRoot;
     }
     processFormula(root : Root, formula : Formula, index : number) : Formula {
         const processedFormula : Formula = {
             type: formula.type,
+            name: "f" + index,
             variables: formula.variables.map(this.processVariable.bind(this, index)),
             pattern: null as unknown as FunctionApplicationExpr[],
             body: null as unknown as Expr,

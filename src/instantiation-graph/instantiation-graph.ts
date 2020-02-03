@@ -425,6 +425,10 @@ export function findTerms(expr : Expr) : ExprNode[] {
         return (expr as Expr[]).flatMap(e => findTerms(e));
     }
 
+    if (typeof expr === "undefined") {
+        throw new Error("Cannot compute set of contained terms for broken AST element " + expr)
+    }
+
     if (isBinaryOperation(expr)) {
         const bo = expr as BinaryOperation;
         return [bo.lhs, bo.rhs].flatMap(e => findTerms(e));

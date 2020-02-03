@@ -134,10 +134,58 @@ export function backwardStep(graph : InstantiationGraph, formula : Formula, body
     // add new backward-step instantiation of formula
     graph.instantiateFormula(formula, bindings);
 
+    // remove obsolete quantifier instantiations
+    removeDuplicateInstantiations(graph);
+
     // recompute set of possible graph operation candidates
     graph.computeGraphOperationCandidates()
 
     console.log(graph);
+}
+
+export function removeDuplicateInstantiations(graph : InstantiationGraph) {
+    let instantiationNodes = Array.from(graph.entryNodes)
+        .filter(n => n.type === InstantiationNodeType.QUANTIFIER)
+        .map(n => n as QuantifierInstantiationNode);
+    
+    // collect quantifier instantiations by formula
+    let formulaInstantiations = new Map<Formula, QuantifierInstantiationNode[]>();
+    instantiationNodes.forEach(qnode => {
+        formulaInstantiations.set(qnode.formula, 
+            [qnode, ...(formulaInstantiations.get(qnode.formula) || [])]);
+        
+    })
+    
+    let toBeRemoved : QuantifierInstantiationNode[] = [];
+    // finally remove obsolete duplicate quantifier instantiation which arise if two bindings
+    // turn out to be equivalent based on this merge operation
+    graph.entryNodes = new Set(instantiationNodes.filter((qnode, index) => {
+        const otherInstantiations = formulaInstantiations.get(qnode.formula)!;
+        const qnodeIndex = otherInstantiations.indexOf(qnode);
+        // check whether there exists another instantiation node with the same 
+        // bindings which is not qnode itself and occurs later in the list according to 'index'
+        const isDuplicate = otherInstantiations.find((otherInstantiation, otherIndex) => {
+            console.log("Duplicate", qnode, otherInstantiation, qnodeIndex < otherIndex, equalBindings(otherInstantiation.bindings, qnode.bindings))
+            return qnodeIndex < otherIndex && equalBindings(otherInstantiation.bindings, qnode.bindings)
+        });
+
+        // keep track of duplicate instantiation nodes for later unlinking
+        if (isDuplicate) { toBeRemoved.push(qnode);}
+
+        return !isDuplicate
+    }));
+
+    console.log("Remove", toBeRemoved);
+
+    // fully unlink duplicate instantiation nodes from graph
+    toBeRemoved.forEach(qnode => {
+        qnode.instantiated.forEach(node => node.instantiator.delete(qnode));
+        qnode.matched.forEach(node => {
+            if (node.type === InstantiationNodeType.FUNC_APPL) {
+                (node as FunctionApplicationNode).matches.delete(qnode);
+            }
+        });
+    });
 }
 
 export function merge(graph : InstantiationGraph, oldTermNode : TermNode, newTermNode : TermNode) {
@@ -165,7 +213,8 @@ export function merge(graph : InstantiationGraph, oldTermNode : TermNode, newTer
         }
         // .instantiator
         funcAppl.instantiator.forEach(q => q.instantiated.delete(oldTermNode));
-        // not to be unified since newTermNode was not instantiated by oldTermNode's instantiator
+        // add newTermNode to oldTermNode's instantiator
+        funcAppl.instantiator.forEach(q => q.instantiated.add(newTermNode));
         
         // .equivalenceClass (maintain equalities over oldTermNode for newTermNode)
         const eqClass = new Set(funcAppl.equivalenceClass);
