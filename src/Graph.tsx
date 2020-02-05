@@ -35,25 +35,15 @@ const CytoscapeStylesheet = [{
   }
 }]
 
-let LAYOUT_OPTIONS = {
-  name: 'breadthfirst',
-
-  fit: true, // whether to fit the viewport to the graph
-  directed: true, // whether the tree is directed downwards (or edges can point in any direction if false)
-  padding: 30, // padding on fit
-  circle: false, // put depths in concentric circles if true, put depths top down if false
-  grid: true, // whether to create an even grid into which the DAG is placed (circle:false only)
-  spacingFactor: 1.75, // positive spacing factor, larger => more space between nodes (N.B. n/a if causes overlap)
-  animate: false, // whether to transition the node positions
-  animationDuration: 50, // duration of animation in ms if enabled
-  randomize: false,
-};
-
 interface GraphProperties {
   graph : any[]
   onTapNode : (nodeId : string, target : any) => void
   onSecondaryTapNode? : (nodeId : string, target : any) => void
   onCanvasMove? : () => void
+  
+  onNodePositionChange? : (node : any, position : {x: number, y: number}) => void
+  
+  graphHash : string
 
   layout : string
 }
@@ -101,9 +91,17 @@ class Graph extends React.Component<GraphProperties, {}> {
           this.props.onSecondaryTapNode(event.target.id(), event.target);
         }
       }
-    })
+    });
+
+    this.cy.on('dragfree', (event : any) => {
+      if (typeof event.target !== "undefined" && typeof event.target.id === "function") {
+        if (this.props.onNodePositionChange) {
+          this.props.onNodePositionChange(event.target, event.target.position());
+        }
+      }
+    });
   }
-  
+
   render() {
     return (
       <div className="graph" ref={(ref) => this.graphContainer = ref}>
@@ -111,16 +109,16 @@ class Graph extends React.Component<GraphProperties, {}> {
           elements={this.props.graph} 
           stylesheet={CytoscapeStylesheet}
           style={ { width: '100%', height: '100%' } } 
-          cy={(_cy : any) => { this.cy = _cy; }} 
+          cy={(_cy : any) => { this.cy = _cy;}}
         />
       </div>
     );
   }
   
   componentDidUpdate(prevProps : GraphProperties) {
-    if (prevProps.graph !== this.props.graph) {
-      this.cy.layout(Object.assign(LAYOUT_OPTIONS, {name: this.props.layout})).run();
-      this.cy.center();
+    if (prevProps.graphHash !== this.props.graphHash) {
+      this.cy.fit();
+      // this.cy.center();
     }
   }
 }

@@ -13,6 +13,10 @@ export enum InstantiationNodeType {
 
 export interface InstantiationNode {
     type : InstantiationNodeType
+
+    // list of predecessor nodes in the evolution of the instantiation graph 
+    // (i.e. nodes which were merged into this node)
+    predecessors : Set<InstantiationNode>
 }
 
 export interface TermNode extends InstantiationNode {
@@ -47,8 +51,7 @@ export interface FunctionApplicationNode extends TermNode {
 
     arguments : TermNode[]
 
-    // list of graph operations (forward/backward steps), this
-    // node enables
+    // list of graph operations (forward/backward steps) enabled by this node
     operations : GraphOperationCandidate[]
 }
 
@@ -64,7 +67,7 @@ export interface ConstantNode extends TermNode {
 
 export class InstantiationGraph {
     cache = new Map<string, TermNode>()
-    entryNodes = new Set<InstantiationNode>();
+    entryNodes : InstantiationNode[] = [];
 
     ctr = 0;
 
@@ -74,15 +77,17 @@ export class InstantiationGraph {
         this.formulas = formulas;
     }
 
-    instantiateFormula(formula: Formula, bindings = new Map<string, TermNode>()): QuantifierInstantiationNode {
-        let q = {
+    instantiateFormula(formula: Formula, bindings = new Map<string, TermNode>(),
+        isForwardDirection: boolean = true): QuantifierInstantiationNode {
+        let q : QuantifierInstantiationNode = {
             name: "q" + (this.ctr++),
             type: InstantiationNodeType.QUANTIFIER,
             formula: formula,
             matched: setOf(),
             instantiated: setOf(),
-            bindings: bindings
-        } as QuantifierInstantiationNode;
+            bindings: bindings,
+            predecessors: setOf()
+        };
 
         // instantiate patterns
         q.matched = new Set(formula.pattern.map(p => this.instantiateTerm(p, bindings, null, null, [q])) as FunctionApplicationNode[]);
@@ -95,7 +100,11 @@ export class InstantiationGraph {
             GraphOperations.setEqual(lhsNode, rhsNode);
         })
         
-        this.entryNodes.add(q);
+        if (isForwardDirection) {
+            this.entryNodes.push(q);
+        } else {
+            this.entryNodes.splice(0, 0, q);
+        }
 
         // recompute set of possible graph operations
         this.computeGraphOperationCandidates();
@@ -133,7 +142,7 @@ export class InstantiationGraph {
 
         if (term.type === NodeType.FUNC_APPLICATION) {
             const fa = term as FunctionApplicationExpr;
-            const faNode = (resultNode as FunctionApplicationNode|null) || {
+            const faNode : FunctionApplicationNode = (resultNode as FunctionApplicationNode|null) || {
                 name: fa.name,
                 arguments: [],
                 equivalenceClass: setOf(),
@@ -142,8 +151,9 @@ export class InstantiationGraph {
                 references: setOf(),
                 matches: setOf(),
                 type: InstantiationNodeType.FUNC_APPL,
-                operations: []
-            } as FunctionApplicationNode;
+                operations: [],
+                predecessors: setOf()
+            };
 
             // save resulting node in cache
             this.cache.set(termPath, faNode);
@@ -194,14 +204,15 @@ export class InstantiationGraph {
                     // 'instantiator' does not need to be propagated along the children of this existing resultNode
                     // since their instantiation cannot be attributed to 'instantiator'
                 } else {
-                    const variableNode = (resultNode as VariableNode|null) || {
+                    const variableNode : VariableNode = (resultNode as VariableNode|null) || {
                         name: c.name,
                         equivalenceClass: setOf(),
                         type: InstantiationNodeType.VARIABLE,
                         variable: c.referencesVariable!,
                         references: setOf(), 
                         instantiator: setOf(),
-                    } as VariableNode;
+                        predecessors: setOf()
+                    };
 
                     // extend FA node by 'instantiator' as cause
                     if (instantiator) {

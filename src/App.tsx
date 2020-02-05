@@ -14,10 +14,13 @@ import { InstantiationGraphCyTransformer } from './instantiation-graph/instantia
 import State from './state';
 import ActionPopup from './ActionPopup';
 import { GraphOperationCandidate, GraphOperationType, ForwardStepCandidate } from './instantiation-graph/operations';
+import { InstantiationGraphLayout, NodePosition } from './instantiation-graph/instantiation-graph-layout';
 
 
 // parser components and transformers
 const astTransformer = new ASTCytoscapeTransformer();
+// simple hash function to compute string hashes
+const strHasher = (s : string) : string => { return "" + s.split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0) };
 
 interface AppState {
   ast : Root|null
@@ -25,6 +28,7 @@ interface AppState {
   traces : Map<string, AstNode>
 
   instantiationGraph : InstantiationGraph|null
+  layout : InstantiationGraphLayout|null,
   instantiationCyGraph : any[]
   instGraphTraces : Map<string, AstNode>
   
@@ -50,6 +54,7 @@ class App extends React.Component<{}, AppState> {
       traces: new Map<string, AstNode>(),
       
       instantiationGraph: null,
+      layout: null,
       instantiationCyGraph: [],
       instGraphTraces: new Map<string, AstNode>(),
       
@@ -67,11 +72,13 @@ class App extends React.Component<{}, AppState> {
       <div className="app">
         <Editor markerData={this.state.markers}/>
         <Graph 
+          graphHash={strHasher(this.state.ast?.inputText ?? "")}
           graph={this.state.instantiationCyGraph} 
           onTapNode={this.onTapNode.bind(this, "inst")}
           onSecondaryTapNode={this.onSecondaryTapNode.bind(this, "inst")} 
           onCanvasMove={this.onGraphCanvasMove.bind(this)}
-          layout="breadthfirst"
+          onNodePositionChange={this.onNodePositionChange.bind(this)}
+          layout="preset"
           ref={ref => {this.graphViewOffsetLeft = ref?.graphContainer?.offsetLeft || 0;}}/>
         <ActionPopup 
           anchorPoint={this.state.popupAnchor || undefined} 
@@ -112,13 +119,16 @@ class App extends React.Component<{}, AppState> {
     if (operation.type === GraphOperationType.FORWARD_STEP) {
       const fsc = operation as ForwardStepCandidate;
       forwardStep(this.state.instantiationGraph!, fsc.formula, fsc.bindings);
-        
+
       if (this.state.ast) {
+        // update layout
+        this.state.layout!.processDelta(this.state.instantiationGraph!);
+        // update state
         this.setState({
           instantiationGraph: this.state.instantiationGraph,
-            ...this.updateGraphRepresentation(this.state.instantiationGraph!, this.state.ast!)
+            ...this.updateGraphRepresentation(this.state.instantiationGraph!, 
+              this.state.layout!, this.state.ast!)
         })
-        console.log(this.state.instantiationGraph?.entryNodes);
       } else {
         throw new Error("Illegal Operation: Cannot perform a forward step if no AST (list of formula) is available.");
       }
@@ -127,20 +137,28 @@ class App extends React.Component<{}, AppState> {
       backwardStep(this.state.instantiationGraph!, bsc.formula, bsc.bodyBindings);
 
       if (this.state.ast) {
+        // update layout
+        this.state.layout!.processDelta(this.state.instantiationGraph!);
+        // update state
         this.setState({
           instantiationGraph: this.state.instantiationGraph,
-            ...this.updateGraphRepresentation(this.state.instantiationGraph!, this.state.ast!)
+            ...this.updateGraphRepresentation(this.state.instantiationGraph!, 
+              this.state.layout!, this.state.ast!)
         })
-        console.log(this.state.instantiationGraph?.entryNodes);
       } else {
         throw new Error("Illegal Operation: Cannot perform a forward step if no AST (list of formula) is available.");
       }
     } else {
       console.error("Graph operation ", operation.type, " cannot be handled.");
     }
+
+    // hide action popup
+    this.setState({popupAnchor: null})
   }
 
   onTapNode(graph : string, nodeId : string, target : any) {
+    // highlight corresponding AST/editor text when an instantiation
+    // node is tapped in the graph
     if (this.state.traces) {
       const traces = graph === "ast" ? this.state.traces : this.state.instGraphTraces;
       if (traces.has(nodeId)) {
@@ -155,14 +173,25 @@ class App extends React.Component<{}, AppState> {
     }
   }
 
-  updateGraphRepresentation(instantiationGraph : InstantiationGraph, ast : Root) {
+  onNodePositionChange(node : any, position : NodePosition) {
+    // register user changes of node positions with the 
+    // used layout, to make sure user position changes are not
+    // done when evolving through forward/backward steps
+    const iNode = node.data("instantiationNode");
+    if (iNode && this.state.layout) {
+      this.state.layout?.updatePosition(iNode, position);
+    }
+  }
+
+  updateGraphRepresentation(instantiationGraph : InstantiationGraph, layout : InstantiationGraphLayout, ast : Root) {
     const {graphDescription: instGraphCyRepr,
-      traces: instGraphTraces} = new InstantiationGraphCyTransformer().transform(instantiationGraph);
+      traces: instGraphTraces} = new InstantiationGraphCyTransformer().transform(instantiationGraph, layout);
     
     return {instantiationCyGraph: instGraphCyRepr, instGraphTraces: instGraphTraces}
   }
 
   onStateUpdate(key : string, value : any) {
+    // invoked whenever the editor content changes
     if (key === "editorContent") {
       try {
         const validator = new Validator();
@@ -180,12 +209,18 @@ class App extends React.Component<{}, AppState> {
           const formula = ast.formulas[0];
           const bindings = new Map<string, TermNode>();
           const instantiationGraph : InstantiationGraph = new InstantiationGraph(ast.formulas);
+          const layout = new InstantiationGraphLayout();
+
           completeBindings(formula, bindings);
           instantiationGraph.instantiateFormula(formula, bindings);
 
+          // compute initial layout
+          layout.processDelta(instantiationGraph);
+
           this.setState({
             instantiationGraph: instantiationGraph,
-            ...this.updateGraphRepresentation(instantiationGraph, ast)
+            layout: layout,
+            ...this.updateGraphRepresentation(instantiationGraph, layout, ast)
           });
         }
       } catch (error) {

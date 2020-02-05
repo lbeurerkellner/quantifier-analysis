@@ -1,3 +1,4 @@
+import { InstantiationGraphLayout } from './instantiation-graph-layout';
 import { GraphOperationType } from './operations';
 import { AstNode } from '../ast/parser';
 import { QuantifierInstantiationNode, InstantiationNode, InstantiationNodeType, FunctionApplicationNode, VariableNode, ConstantNode, TermNode, InstantiationGraph } from './instantiation-graph';
@@ -28,10 +29,13 @@ export class InstantiationGraphCyTransformer {
 
     ctr = 0
 
-    transform(graph: InstantiationGraph): {graphDescription: any[], traces : Map<string, AstNode>} {
+    layout : InstantiationGraphLayout = null as unknown as InstantiationGraphLayout;
+
+    transform(graph: InstantiationGraph, layout : InstantiationGraphLayout): {graphDescription: any[], traces : Map<string, AstNode>} {
         this.traces = new Map<string, AstNode>();
         this.ctr = 0;
         this.graph = graph;
+        this.layout = layout;
 
         graph.entryNodes.forEach((n) => {
             this.transformNode(n)
@@ -78,11 +82,13 @@ export class InstantiationGraphCyTransformer {
     transformQuantifierInstantiation(qi : QuantifierInstantiationNode) : string {
         const qiNodeId = "qi_" + (this.ctr++);
         let nodes: any[] = [{ data: { 
-            id: qiNodeId, 
-            label: qi.name,
-            "background-color": "rgb(240, 235, 158)",
-            "position": [0, 0]
-        } }];
+                id: qiNodeId, 
+                label: qi.name,
+                "background-color": "rgb(240, 235, 158)",
+                instantiationNode: qi
+            },
+            position: this.layout.position(qi)
+        }];
 
         this.traces.set(qiNodeId, qi.formula);
 
@@ -114,9 +120,12 @@ export class InstantiationGraphCyTransformer {
     transformFunctionApplication(fa : FunctionApplicationNode) : string {
         const faNodeId = "func_appl_" + (this.ctr++);
         let nodes: any[] = [{ data: { 
-            "id": faNodeId, 
-            "label": fa.functionApplication.name
-        } }];
+                "id": faNodeId, 
+                "label": fa.functionApplication.name,
+                instantiationNode: fa
+            },
+            position: this.layout.position(fa)
+        }];
         this.traces.set(faNodeId, fa.functionApplication);
 
         // add placeholder to cache and idMap
@@ -172,10 +181,13 @@ export class InstantiationGraphCyTransformer {
     transformVariable(v : VariableNode) : string {
         const nodeId = "var_" + (this.ctr++);
         let nodes: any[] = [{ data: { 
-            "id": nodeId, 
-            "label": v.name,
-            "background-color": "rgb(196, 69, 69)"
-        } }];
+                "id": nodeId, 
+                "label": v.name,
+                "background-color": "rgb(196, 69, 69)",
+                instantiationNode: v
+            },
+            position: this.layout.position(v)
+        }];
         this.traces.set(nodeId, v.variable);
         this.idMap.set(v, nodeId);
 
@@ -190,10 +202,13 @@ export class InstantiationGraphCyTransformer {
     transformConstant(c : ConstantNode) : string {
         const nodeId = "const_" + (this.ctr++);
         let nodes: any[] = [{ data: { 
-            "id": nodeId, 
-            "label": "<constant>",
-            "background-color": "rgb(196, 69, 69)"
-        } }];
+                "id": nodeId, 
+                "label": "<constant>",
+                "background-color": "rgb(196, 69, 69)",
+                instantiationNode: c
+            },
+            position: this.layout.position(c)
+        }];
         // this.traces.set(nodeId, c.constant); // unsupported for now
         this.idMap.set(c, nodeId);
         this.cache.set(c, nodes);

@@ -132,7 +132,7 @@ export function backwardStep(graph : InstantiationGraph, formula : Formula, body
     graph.rebuildCache();
 
     // add new backward-step instantiation of formula
-    graph.instantiateFormula(formula, bindings);
+    graph.instantiateFormula(formula, bindings, false);
 
     // remove obsolete quantifier instantiations
     removeDuplicateInstantiations(graph);
@@ -159,13 +159,12 @@ export function removeDuplicateInstantiations(graph : InstantiationGraph) {
     let toBeRemoved : QuantifierInstantiationNode[] = [];
     // finally remove obsolete duplicate quantifier instantiation which arise if two bindings
     // turn out to be equivalent based on this merge operation
-    graph.entryNodes = new Set(instantiationNodes.filter((qnode, index) => {
+    graph.entryNodes = instantiationNodes.filter((qnode, index) => {
         const otherInstantiations = formulaInstantiations.get(qnode.formula)!;
         const qnodeIndex = otherInstantiations.indexOf(qnode);
         // check whether there exists another instantiation node with the same 
         // bindings which is not qnode itself and occurs later in the list according to 'index'
         const isDuplicate = otherInstantiations.find((otherInstantiation, otherIndex) => {
-            console.log("Duplicate", qnode, otherInstantiation, qnodeIndex < otherIndex, equalBindings(otherInstantiation.bindings, qnode.bindings))
             return qnodeIndex < otherIndex && equalBindings(otherInstantiation.bindings, qnode.bindings)
         });
 
@@ -173,9 +172,7 @@ export function removeDuplicateInstantiations(graph : InstantiationGraph) {
         if (isDuplicate) { toBeRemoved.push(qnode);}
 
         return !isDuplicate
-    }));
-
-    console.log("Remove", toBeRemoved);
+    });
 
     // fully unlink duplicate instantiation nodes from graph
     toBeRemoved.forEach(qnode => {
@@ -189,7 +186,10 @@ export function removeDuplicateInstantiations(graph : InstantiationGraph) {
 }
 
 export function merge(graph : InstantiationGraph, oldTermNode : TermNode, newTermNode : TermNode) {
-    console.log("Merge", instantiatedPath(oldTermNode), instantiatedPath(newTermNode));
+    // keep track of merged nodes
+    oldTermNode.predecessors.forEach(p => newTermNode.predecessors.add(p));
+    newTermNode.predecessors.add(oldTermNode);
+
     if (oldTermNode.type === InstantiationNodeType.CONSTANT || oldTermNode.type === InstantiationNodeType.VARIABLE) {
         const variableOrConstant = oldTermNode as (VariableNode|ConstantNode);
         // .instantiator
@@ -251,8 +251,6 @@ export function merge(graph : InstantiationGraph, oldTermNode : TermNode, newTer
 export function rewireReference(graph : InstantiationGraph, referenceFa : FunctionApplicationNode, 
     oldTarget : TermNode, newTarget : TermNode) {
 
-    console.log("Rewire reference to", oldTarget, "in", referenceFa);
-
     referenceFa.arguments = referenceFa.arguments.map(a => {
         if (a === oldTarget) {
             return newTarget;
@@ -296,7 +294,8 @@ export function completeBindings(formula : Formula, bindings : Map<string, TermN
             instantiator: setOf(),
             equivalenceClass: setOf(),
             references: setOf(),
-            variable: v
+            variable: v,
+            predecessors: setOf()
         };
         bindings.set(v.globalName, variableNode)
     });
