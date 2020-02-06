@@ -77,7 +77,14 @@ export class InstantiationGraph {
         this.formulas = formulas;
     }
 
+    /**
+     * Instantiate the given 'formula' using 'bindings'.
+     * 
+     * Only generates ground terms for the trigger terms which are not
+     * listed as key in 'existingTriggerTerms'.
+     */
     instantiateFormula(formula: Formula, bindings = new Map<string, TermNode>(),
+        existingTriggerTerms = new Map<FunctionApplicationExpr, FunctionApplicationNode>(), 
         isForwardDirection: boolean = true): QuantifierInstantiationNode {
         let q : QuantifierInstantiationNode = {
             name: "q" + (this.ctr++),
@@ -89,8 +96,16 @@ export class InstantiationGraph {
             predecessors: setOf()
         };
 
-        // instantiate patterns
-        q.matched = new Set(formula.pattern.map(p => this.instantiateTerm(p, bindings, null, null, [q])) as FunctionApplicationNode[]);
+        // instantiate missing trigger terms
+        q.matched = new Set([
+            ...Array.from(existingTriggerTerms.values()),
+            ...formula.pattern
+                .filter(p => !existingTriggerTerms.has(p))
+                .map(p => this.instantiateTerm(p, bindings, null, null, [q])) as FunctionApplicationNode[]
+        ]);
+        // connect existing trigger terms
+        existingTriggerTerms.forEach(term => term.matches.add(q));
+
         // instantiate body
         findTerms(formula.body).map(t => this.instantiateTerm(t, bindings, q));
         // instantiate equalities
@@ -100,6 +115,8 @@ export class InstantiationGraph {
             GraphOperations.setEqual(lhsNode, rhsNode);
         })
         
+        // depending on the direction (forward/backward)
+        // prepend or append the new instantiation node 
         if (isForwardDirection) {
             this.entryNodes.push(q);
         } else {

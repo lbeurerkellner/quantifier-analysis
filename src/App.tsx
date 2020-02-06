@@ -118,7 +118,7 @@ class App extends React.Component<{}, AppState> {
   onApplyGraphOperation(operation : GraphOperationCandidate) {
     if (operation.type === GraphOperationType.FORWARD_STEP) {
       const fsc = operation as ForwardStepCandidate;
-      forwardStep(this.state.instantiationGraph!, fsc.formula, fsc.bindings);
+      forwardStep(this.state.instantiationGraph!, fsc.formula, fsc.existingTriggerTerms, fsc.bindings);
 
       if (this.state.ast) {
         // update layout

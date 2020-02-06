@@ -11,7 +11,7 @@ type Binding = Map<string, TermNode>;
  * and the matched term nodes in the instantiation graph.
  */
 interface EMatch {
-    terms : Set<TermNode>
+    existingTriggerTerms : Map<FunctionApplicationExpr, FunctionApplicationNode>
     binding : Binding
 }
 
@@ -33,8 +33,8 @@ export function setEqual(lhs: TermNode, rhs: TermNode) {
 }
 
 export enum GraphOperationType {
-    FORWARD_STEP = "forward_step",
-    BACKWARD_STEP = "backward_step"
+    FORWARD_STEP = "FORWARD_STEP",
+    BACKWARD_STEP = "BACKWARD_STEP"
 }
 
 export interface GraphOperationCandidate {
@@ -46,6 +46,9 @@ export interface GraphOperationCandidate {
 export interface ForwardStepCandidate extends GraphOperationCandidate {
     formula : Formula
     bindings : Map<string, TermNode>
+
+    // map of existing ground terms which match some of the patterns of 'formula'
+    existingTriggerTerms : Map<FunctionApplicationExpr, FunctionApplicationNode>
 }
 
 export interface BackwardStepCandidate extends GraphOperationCandidate {
@@ -53,13 +56,16 @@ export interface BackwardStepCandidate extends GraphOperationCandidate {
     bodyBindings : Map<TermNode, ExprNode>
 }
 
-export function forwardStep(graph : InstantiationGraph, formula : Formula, bindings : Map<string, TermNode>) : QuantifierInstantiationNode {
+export function forwardStep(graph : InstantiationGraph, formula : Formula, 
+    existingTriggerTerms : Map<FunctionApplicationExpr, FunctionApplicationNode>, bindings : Map<string, TermNode>) : QuantifierInstantiationNode {
     // augment binding to complete binding
     completeBindings(formula, bindings);
-    return graph.instantiateFormula(formula, bindings);
+    return graph.instantiateFormula(formula, bindings, existingTriggerTerms);
 }
 
-export function computePossibleForwardSteps(instantiationGraph : InstantiationGraph, terms : TermNode[], formulas : Formula[]) : ForwardStepCandidate[] {
+export function computePossibleForwardSteps(instantiationGraph : InstantiationGraph, 
+    terms : TermNode[], formulas : Formula[]) : ForwardStepCandidate[] {
+    
     const qNodes = (Array.from(instantiationGraph.entryNodes)
         .filter(n => n.type === InstantiationNodeType.QUANTIFIER) as QuantifierInstantiationNode[]);
     
@@ -69,7 +75,9 @@ export function computePossibleForwardSteps(instantiationGraph : InstantiationGr
     allPatterns.forEach(pattern => {
         patternMatches.set(pattern, terms
             .flatMap(term => 
-                match(pattern, term, false).map(b => ({terms: setOf(term), binding: b} as EMatch))
+                match(pattern, term, false).map(b => ({
+                    existingTriggerTerms: new Map([[pattern, term]]), 
+                    binding: b} as EMatch))
             )
         );
     });
@@ -97,7 +105,8 @@ export function computePossibleForwardSteps(instantiationGraph : InstantiationGr
             .map(ematch => ({
                 formula: formula,
                 bindings: ematch.binding,
-                terms: ematch.terms,
+                existingTriggerTerms: ematch.existingTriggerTerms,
+                terms: new Set(ematch.existingTriggerTerms.values()),
                 type: GraphOperationType.FORWARD_STEP
             }))
     });
@@ -132,7 +141,7 @@ export function backwardStep(graph : InstantiationGraph, formula : Formula, body
     graph.rebuildCache();
 
     // add new backward-step instantiation of formula
-    graph.instantiateFormula(formula, bindings, false);
+    graph.instantiateFormula(formula, bindings, new Map(), false);
 
     // remove obsolete quantifier instantiations
     removeDuplicateInstantiations(graph);
@@ -338,9 +347,18 @@ function mergeMatches(matches : EMatch[]) : EMatch|null {
     if (!binding) {
         return null;
     }
+    let existingTriggerTerms = new Map<FunctionApplicationExpr, FunctionApplicationNode>();
+    matches.flatMap(m => Array.from(m.existingTriggerTerms.entries())).forEach(e => {
+        if (existingTriggerTerms.has(e[0])) {
+            console.error("Failed to merge partial E-matches due to inconsistent ground-term pattern mapping.", matches);
+            throw new Error("Failed to merge partial E-matches due to inconsistent ground-term pattern mapping.");
+        } else {
+            existingTriggerTerms.set(e[0], e[1]);
+        }
+    })
     return {
         binding: binding,
-        terms: new Set(matches.flatMap(m => Array.from(m.terms)))
+        existingTriggerTerms: existingTriggerTerms
     };
 }
 
@@ -348,10 +366,10 @@ function mergeMatches(matches : EMatch[]) : EMatch|null {
  * Augments the bindings of the provided EMatch, to bind all
  * variables in formula.
  */
-function completeMatch(formula : Formula, match : EMatch) {
+function completeMatch(formula : Formula, match : EMatch) : EMatch{
     return {
         binding: completeBindings(formula, match.binding),
-        terms: match.terms
+        existingTriggerTerms: match.existingTriggerTerms
     };
 }
 
