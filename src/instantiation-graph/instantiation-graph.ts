@@ -201,7 +201,6 @@ export class InstantiationGraph {
                 .filter(fa => (fa !== faNode &&
                                fa.name === faNode.name &&
                                fa.arguments.length === faNode.arguments.length)))
-            console.log("Sibling to", faNode, "\n", siblingFAs)
             // add equalities to siblings if applicable
             siblingFAs.forEach(siblingFa => GraphOperations.setEqualIfArgumentsMatch(siblingFa, faNode));
 
