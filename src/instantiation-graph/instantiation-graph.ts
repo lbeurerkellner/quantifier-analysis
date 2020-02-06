@@ -192,6 +192,19 @@ export class InstantiationGraph {
             if (reference) {
                 faNode.references.add(reference);
             }
+
+            //// derive equalities over new FA node from its arguments
+            // find set of sibling function applications of the same function
+            const siblingFAs = setOf(...faNode.arguments
+                .flatMap(a => Array.from(a.equivalenceClass))
+                .flatMap(a => Array.from(a.references))
+                .filter(fa => (fa !== faNode &&
+                               fa.name === faNode.name &&
+                               fa.arguments.length === faNode.arguments.length)))
+            console.log("Sibling to", faNode, "\n", siblingFAs)
+            // add equalities to siblings if applicable
+            siblingFAs.forEach(siblingFa => GraphOperations.setEqualIfArgumentsMatch(siblingFa, faNode));
+
             // set resultNode to be returned
             resultNode = faNode;
         } else if (term.type === NodeType.CONSTANT) {

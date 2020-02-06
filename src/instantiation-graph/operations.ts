@@ -1,7 +1,7 @@
 import { Formula, FunctionApplicationExpr, ExprNode } from './../ast/parser';
 import { match, mergeBindings } from './e-matching';
 import { TermNode, InstantiationGraph, InstantiationNodeType, QuantifierInstantiationNode, instantiatedPath, VariableNode, findTerms, ConstantNode, FunctionApplicationNode } from './instantiation-graph';
-import {setOf} from "./util"
+import {setOf, zip, multiMap} from "./util"
 import { bodyMatch } from './body-matching';
 
 type Binding = Map<string, TermNode>;
@@ -16,7 +16,7 @@ interface EMatch {
 }
 
 /**
- * Adjusts lhs and rhs in such that they are considered
+ * Adjusts lhs and rhs such that they are considered
  * equal (part of the same equivalence class of term nodes).
  */
 export function setEqual(lhs: TermNode, rhs: TermNode) {
@@ -30,6 +30,33 @@ export function setEqual(lhs: TermNode, rhs: TermNode) {
     eqClass.add(rhs);
 
     eqClass.forEach(t => t.equivalenceClass = eqClass);
+
+    // propagate equivalence for parent function calls
+    const lhsFunctionApplications = multiMap(Array.from(lhs.references).map(r => [r.name, r]));
+    Array.from(rhs.references).forEach(rhsAppl => {
+        (lhsFunctionApplications.get(rhsAppl.name) || []).forEach(lhsAppl => {
+            if (rhsAppl.name === lhsAppl.name && rhsAppl.arguments.length === lhsAppl.arguments.length) { // double check 
+                setEqualIfArgumentsMatch(lhsAppl, rhsAppl);
+            }
+        })
+    });
+}
+
+/**
+ * Checks all arguments of the provided pair of function application nodes 
+ * to be equal and calls 'setEqual', if that holds true.
+ */
+export function setEqualIfArgumentsMatch(lhs : FunctionApplicationNode, rhs : FunctionApplicationNode) {
+    let lhsArgs = lhs.arguments;
+    let rhsArgs = rhs.arguments;
+
+    for (let pair of zip(lhsArgs, rhsArgs)) {
+        if (!pair[0].equivalenceClass.has(pair[1])) {
+            return; // non-equivalent arguments
+        }
+    }
+    // at this point all arguments must be equal
+    setEqual(lhs, rhs);
 }
 
 export enum GraphOperationType {
