@@ -3,7 +3,7 @@ import React from 'react';
 import ActionPopup, { GraphOperationsPopupContent, InstantiationInfoPopupContent, PopupContent } from './ActionPopup';
 import { ASTCytoscapeTransformer } from './ast/ast-cytoscape-transformer';
 import { createMarker, createMarkerFromValidationError } from './ast/ast-utils';
-import { AstNode, Parser, Root } from './ast/parser';
+import { AstNode, Formula, Parser, Root } from './ast/parser';
 import { Validator } from './ast/validator';
 import './css/app.css';
 import { SyntaxError } from './def/pegjs';
@@ -14,6 +14,7 @@ import { InstantiationGraphCyTransformer } from './instantiation-graph/instantia
 import { InstantiationGraphLayout, NodePosition } from './instantiation-graph/instantiation-graph-layout';
 import { backwardStep, BackwardStepCandidate, completeBindings, forwardStep, ForwardStepCandidate, GraphOperationCandidate, GraphOperationType } from './instantiation-graph/operations';
 import State from './state';
+import { Toolbar } from "./Toolbar";
 
 
 // parser components and transformers
@@ -30,6 +31,9 @@ interface AppState {
   layout : InstantiationGraphLayout|null,
   instantiationCyGraph : any[]
   instGraphTraces : Map<string, AstNode>
+  // ast inputText hash based on which the current
+  // graph has been generated
+  graphHash : string
 
   editorDecorations: editor.IModelDeltaDecoration[]
   markers: editor.IMarkerData[]
@@ -57,6 +61,7 @@ class App extends React.Component<{}, AppState> {
       layout: null,
       instantiationCyGraph: [],
       instGraphTraces: new Map<string, AstNode>(),
+      graphHash : "",
       
       editorDecorations: [],
       markers: [],
@@ -71,9 +76,15 @@ class App extends React.Component<{}, AppState> {
   render() {
     return (
       <div className="app">
-        <Editor markerData={this.state.markers} decorations={this.state.editorDecorations}/>
+        <div className="editor-pane">
+          <Editor markerData={this.state.markers} decorations={this.state.editorDecorations}/>
+          <Toolbar isFresh={this.state.instantiationCyGraph.length === 0}
+            formulas={this.state.ast?.formulas ?? []}
+            isDirty={this.state.markers.length === 0 && this.state.graphHash !== strHasher(this.state.ast?.inputText ?? "")}
+            onReset={this.initialiseGraph.bind(this)}/>
+        </div>
         <Graph 
-          graphHash={strHasher(this.state.ast?.inputText ?? "")}
+          graphHash={this.state.graphHash}
           graph={this.state.instantiationCyGraph} 
           onTapNode={this.onTapNode.bind(this, "inst")}
           onSecondaryTapNode={this.onSecondaryTapNode.bind(this, "inst")} 
@@ -85,7 +96,7 @@ class App extends React.Component<{}, AppState> {
           anchorPoint={this.state.popupAnchor || undefined} 
           popupContent={this.state.popupContent}
           onApplyOperation={this.onApplyGraphOperation.bind(this)}
-          />
+        />
       </div>
     );
   }
@@ -105,6 +116,7 @@ class App extends React.Component<{}, AppState> {
     this.setState({popupAnchor: null});
   }
 
+  // TODO: not only secondary taps only, also triggered on regular node taps
   onSecondaryTapNode(graph : string, nodeId : string, target : any) {
     if (target.data("graph-operation-candidates")) {
       const candidates = target.data("graph-operation-candidates");
@@ -226,23 +238,6 @@ class App extends React.Component<{}, AppState> {
 
         if (errors.length > 0) {
           this.setState({markers: errors.map(e => createMarkerFromValidationError(e))});
-        } else {
-          const formula = ast.formulas[0];
-          const bindings = new Map<string, TermNode>();
-          const instantiationGraph : InstantiationGraph = new InstantiationGraph(ast.formulas);
-          const layout = new InstantiationGraphLayout();
-
-          completeBindings(formula, bindings);
-          instantiationGraph.instantiateFormula(formula, bindings);
-
-          // compute initial layout
-          layout.processDelta(instantiationGraph);
-
-          this.setState({
-            instantiationGraph: instantiationGraph,
-            layout: layout,
-            ...this.updateGraphRepresentation(instantiationGraph, layout, ast)
-          });
         }
       } catch (error) {
         // construct IMarkerData from peg.SyntaxError
@@ -258,6 +253,28 @@ class App extends React.Component<{}, AppState> {
         }
       }
     }
+  }
+
+  initialiseGraph(formula : Formula) {
+    if (!this.state.ast) {
+      return;
+    }
+    const bindings = new Map<string, TermNode>();
+    const instantiationGraph : InstantiationGraph = new InstantiationGraph(this.state.ast.formulas);
+    const layout = new InstantiationGraphLayout();
+
+    completeBindings(formula, bindings);
+    instantiationGraph.instantiateFormula(formula, bindings);
+
+    // compute initial layout
+    layout.processDelta(instantiationGraph);
+
+    this.setState({
+      instantiationGraph: instantiationGraph,
+      layout: layout,
+      ...this.updateGraphRepresentation(instantiationGraph, layout, this.state.ast),
+      graphHash: strHasher(this.state.ast?.inputText ?? "")
+    });
   }
 }
 

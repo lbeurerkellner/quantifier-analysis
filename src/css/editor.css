@@ -1,8 +1,9 @@
 .editor {
-    flex: 1;
     text-align: left;
     outline: none;
     overflow: hidden;
+    width: 100%;
+    height: 100%;
 }
 .editor input {
     outline: none;

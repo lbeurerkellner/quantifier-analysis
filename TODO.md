@@ -1,10 +1,8 @@
 ## TODO
-* quantifier instantiation info popup
-
-* better overall UI concept
-    - save/load files
-    - postpone resetting graph on editor changes (show button)
-    - allow choice of initial formula
+* [ ] better overall UI concept
+    - [*] postpone resetting graph on editor changes (show button)
+    - [*] allow choice of initial formula
+    - [ ] save/load files
 
 * instantiation graph history (undo/redo)
 * syntax for formula names
@@ -17,6 +15,8 @@
     - show relationship between input- and matching output nodes
 
 ## DONE
+
+* quantifier instantiation info popup DONE
 
 * model for instantiation graph 
     - forward stepping DONE

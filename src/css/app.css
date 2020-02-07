@@ -13,3 +13,39 @@
   background: goldenrod;
   border-radius: 2pt;
 }
+
+.editor-pane {
+  flex: 1;
+  position: relative;
+}
+
+.reset-graph-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background-color: rgba(210, 210, 211, 0.719);
+  text-align: left;
+  font-size: 8pt;
+  padding: 5pt;
+  display: flex;
+  flex-direction: row;
+  justify-content: right;
+  border-top: 1px solid #C8C8C8;
+}
+
+.reset-graph-panel .message {
+  flex: 1;
+}
+
+.reset-graph-panel .controls select {
+  display: inline-block;
+  max-width: 80pt;
+}
+
+.reset-graph-panel .controls {
+  float: right;
+  margin-right: 15pt;
+  flex: 1;
+  text-align: right;
+}
