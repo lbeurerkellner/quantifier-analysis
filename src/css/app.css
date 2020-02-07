@@ -8,3 +8,8 @@
   justify-content: top;
   background-color: #282c34;
 }
+
+.trace-link-line-decoration {
+  background: goldenrod;
+  border-radius: 2pt;
+}

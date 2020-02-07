@@ -301,6 +301,7 @@ function mergeRange(...ranges : InputRange[]) {
     }
     return result;
 }
+
 function lessThanLocation(lhs : InputLocation, rhs : InputLocation) {
     return lhs.line < rhs.line ||
         (lhs.line === rhs.line && lhs.column < rhs.column) ||

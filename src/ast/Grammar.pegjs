@@ -13,7 +13,7 @@ formulas
   / formula:formula
 
 formula
-  = "forall" WS vars:variable_list WS pat:trigger_pattern? body:expr_list ";" { 
+  = "forall" WS vars:variable_list WS pat:trigger_pattern? WS body:expr_list ";" { 
     return [{
       "type": "formula", 
       "variables": vars, 
@@ -100,7 +100,7 @@ parenthesis
   = WS "(" WS e:expr_list ")" WS { return e; }
 
 func_application_or_constant
-  = WS name:IDENTIFIER WS operands:func_application_arg_list? WS {
+  = name:IDENTIFIER WS operands:func_application_arg_list? {
     let allOperands = operands || [];
     
     if (allOperands.length == 0) {

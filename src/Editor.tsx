@@ -8,8 +8,18 @@ languages.register({
   id: "plain"
 })
 
-class Editor extends React.Component<{markerData: editor.IMarkerData[]}, {}> {
+interface EditorProps {
+  markerData : editor.IMarkerData[]
+  decorations : editor.IModelDeltaDecoration[]
+}
+
+class Editor extends React.Component<EditorProps, {}> {
+  public static defaultProps = {
+    decorations: []
+  }
+  
   editorHandle : editor.ICodeEditor | null
+  previousDecorationHandles : string[] = []
 
   constructor(props: any) {
     super(props);
@@ -43,12 +53,17 @@ class Editor extends React.Component<{markerData: editor.IMarkerData[]}, {}> {
     State.store("editorContent", newValue);
   }
 
-  componentDidUpdate(prevProps: {}, prevState: {}, snapshot?: any) {
+  componentDidUpdate(prevProps: EditorProps, prevState: {}, snapshot?: any) {
     if (this.editorHandle) {
+      // update markers
       const model = this.editorHandle.getModel() as editor.ITextModel
       editor.setModelMarkers(model, "errors", this.props.markerData);
       editor.setModelLanguage(model, "plain")
       this.editorHandle.setModel(model);
+
+      // update decorations
+      this.previousDecorationHandles = this.editorHandle.deltaDecorations(
+        this.previousDecorationHandles, this.props.decorations);
     }
   }
 }

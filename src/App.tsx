@@ -1,4 +1,4 @@
-import { editor, MarkerSeverity } from 'monaco-editor';
+import { editor, MarkerSeverity, Range } from 'monaco-editor';
 import React from 'react';
 import { ASTCytoscapeTransformer } from './ast/ast-cytoscape-transformer';
 import { createMarker, createMarkerFromValidationError } from './ast/ast-utils';
@@ -15,6 +15,7 @@ import State from './state';
 import ActionPopup from './ActionPopup';
 import { GraphOperationCandidate, GraphOperationType, ForwardStepCandidate } from './instantiation-graph/operations';
 import { InstantiationGraphLayout, NodePosition } from './instantiation-graph/instantiation-graph-layout';
+import MonacoEditor from 'react-monaco-editor';
 
 
 // parser components and transformers
@@ -31,7 +32,8 @@ interface AppState {
   layout : InstantiationGraphLayout|null,
   instantiationCyGraph : any[]
   instGraphTraces : Map<string, AstNode>
-  
+
+  editorDecorations: editor.IModelDeltaDecoration[]
   markers: editor.IMarkerData[]
 
   popupAnchor : {x : number, y : number}|null
@@ -58,6 +60,7 @@ class App extends React.Component<{}, AppState> {
       instantiationCyGraph: [],
       instGraphTraces: new Map<string, AstNode>(),
       
+      editorDecorations: [],
       markers: [],
       
       popupAnchor: null,
@@ -70,7 +73,7 @@ class App extends React.Component<{}, AppState> {
   render() {
     return (
       <div className="app">
-        <Editor markerData={this.state.markers}/>
+        <Editor markerData={this.state.markers} decorations={this.state.editorDecorations}/>
         <Graph 
           graphHash={strHasher(this.state.ast?.inputText ?? "")}
           graph={this.state.instantiationCyGraph} 
@@ -167,7 +170,14 @@ class App extends React.Component<{}, AppState> {
           // visualise trace links as INFO markers
           const marker = createMarker(node.location, "Node Location",
           "ast.trace.link", MarkerSeverity.Info);
-          this.setState({markers: [marker]})
+
+          this.setState({editorDecorations: [{
+              range: new Range(node.location.start.line, 
+                node.location.start.column,
+                node.location.end.line, 
+                node.location.end.column),
+              options: { inlineClassName: "trace-link-line-decoration" }
+            }]})
         }
       }
     }

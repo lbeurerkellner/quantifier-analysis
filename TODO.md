@@ -1,4 +1,22 @@
 ## TODO
+* quantifier instantiation info popup
+
+* better overall UI concept
+    - save/load files
+    - postpone resetting graph on editor changes (show button)
+    - allow choice of initial formula
+
+* instantiation graph history (undo/redo)
+* syntax for formula names
+* export as PNG
+* export as dot file (from cy representation?)
+
+* selection mode for instantiation nodes and automatic criterion evaluation
+    - selection indicator for selected instantiation nodes
+    - show non-adjacent term nodes with less opacity
+    - show relationship between input- and matching output nodes
+
+## DONE
 
 * model for instantiation graph 
     - forward stepping DONE
@@ -19,13 +37,13 @@
         - TODO: merge obsolete quantifier instantiations (duplicates according to the used binding) after unification induced by backward match DONE
     
     
-    - propagate equalities along function applications
+    - propagate equalities along function applications DONE
     
     - improve behaviour of e-matches via equalities e.g.
     ```
     forall x {f(x)} g(h(x)) and h(x) = f(x);
     forall x {g(f(x))} f(h(x));
-    ```
+    ``` DONE
 
     bonus:
     - improve traces to AST
