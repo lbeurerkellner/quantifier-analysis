@@ -1,5 +1,6 @@
 import { editor, MarkerSeverity, Range } from 'monaco-editor';
 import React from 'react';
+import ActionPopup, { GraphOperationsPopupContent, InstantiationInfoPopupContent, PopupContent } from './ActionPopup';
 import { ASTCytoscapeTransformer } from './ast/ast-cytoscape-transformer';
 import { createMarker, createMarkerFromValidationError } from './ast/ast-utils';
 import { AstNode, Parser, Root } from './ast/parser';
@@ -8,14 +9,11 @@ import './css/app.css';
 import { SyntaxError } from './def/pegjs';
 import Editor from './Editor';
 import Graph from './Graph';
-import { InstantiationGraph, TermNode } from './instantiation-graph/instantiation-graph';
-import { forwardStep, completeBindings, BackwardStepCandidate, backwardStep } from './instantiation-graph/operations';
+import { InstantiationGraph, InstantiationNodeType, QuantifierInstantiationNode, TermNode } from './instantiation-graph/instantiation-graph';
 import { InstantiationGraphCyTransformer } from './instantiation-graph/instantiation-graph-cy-transformer';
-import State from './state';
-import ActionPopup from './ActionPopup';
-import { GraphOperationCandidate, GraphOperationType, ForwardStepCandidate } from './instantiation-graph/operations';
 import { InstantiationGraphLayout, NodePosition } from './instantiation-graph/instantiation-graph-layout';
-import MonacoEditor from 'react-monaco-editor';
+import { backwardStep, BackwardStepCandidate, completeBindings, forwardStep, ForwardStepCandidate, GraphOperationCandidate, GraphOperationType } from './instantiation-graph/operations';
+import State from './state';
 
 
 // parser components and transformers
@@ -37,7 +35,7 @@ interface AppState {
   markers: editor.IMarkerData[]
 
   popupAnchor : {x : number, y : number}|null
-  operationCandidates : GraphOperationCandidate[]
+  popupContent : PopupContent|null
 }
 
 class App extends React.Component<{}, AppState> {
@@ -64,7 +62,7 @@ class App extends React.Component<{}, AppState> {
       markers: [],
       
       popupAnchor: null,
-      operationCandidates: []
+      popupContent: null
     }
   }
 
@@ -85,7 +83,7 @@ class App extends React.Component<{}, AppState> {
           ref={ref => {this.graphViewOffsetLeft = ref?.graphContainer?.offsetLeft || 0;}}/>
         <ActionPopup 
           anchorPoint={this.state.popupAnchor || undefined} 
-          operationCandidates={this.state.operationCandidates}
+          popupContent={this.state.popupContent}
           onApplyOperation={this.onApplyGraphOperation.bind(this)}
           />
       </div>
@@ -113,7 +111,23 @@ class App extends React.Component<{}, AppState> {
       if (candidates.length > 0) {
         let pos = target.renderedPosition();
         pos = {x: this.graphViewOffsetLeft + pos.x, y: pos.y};
-        this.setState({popupAnchor: pos, operationCandidates: candidates});
+        this.setState({
+          popupAnchor: pos, 
+          popupContent: new GraphOperationsPopupContent(candidates)
+        });
+      }
+    } 
+    if (target.data("instantiationNode")) {
+      const node = target.data("instantiationNode");
+
+      if (node.type === InstantiationNodeType.QUANTIFIER) {
+        const qi = node as QuantifierInstantiationNode;
+        let pos = target.renderedPosition();
+        pos = {x: this.graphViewOffsetLeft + pos.x, y: pos.y};
+        this.setState({
+          popupAnchor: pos, 
+          popupContent: new InstantiationInfoPopupContent(qi)
+        });
       }
     }
   }
@@ -167,10 +181,7 @@ class App extends React.Component<{}, AppState> {
       if (traces.has(nodeId)) {
         let node = traces?.get(nodeId);
         if (node) {
-          // visualise trace links as INFO markers
-          const marker = createMarker(node.location, "Node Location",
-          "ast.trace.link", MarkerSeverity.Info);
-
+          // visualise trace links as editor decorations
           this.setState({editorDecorations: [{
               range: new Range(node.location.start.line, 
                 node.location.start.column,

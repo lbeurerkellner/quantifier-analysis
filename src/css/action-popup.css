@@ -8,6 +8,8 @@
     text-align: left;
     overflow-y: scroll;
     max-height: 320px;
+
+    border-top-width: 0pt;
 }
 
 .action-item h1 {
@@ -23,13 +25,10 @@
     margin-left: 0pt;
     border-radius: 1pt;
     padding: 4pt;
+    overflow-y: scroll;
 }
 .action-item .code pre {
     margin: 0;
-}
-
-.action-popup .action-item:nth-child(1) {
-    border-top: 0px solid #C8C8C8;
 }
 
 .action-item {
