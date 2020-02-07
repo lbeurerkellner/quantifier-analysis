@@ -83,7 +83,7 @@ function parseFormula(formula : string) : Formula {
     const parser = new Parser();
     let ast = parser.parse(formula);
     return ast.formulas[0];
-  }
+}
 
 function instantiateFormula(formula : Formula) : QuantifierInstantiationNode {
     const bindings = new Map<string, TermNode>();

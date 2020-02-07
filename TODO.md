@@ -1,20 +1,23 @@
 ## TODO
-* [ ] better overall UI concept
-    - [*] postpone resetting graph on editor changes (show button)
-    - [*] allow choice of initial formula
-    - [ ] save/load files
+* [ ] syntax for formula names
+* [ ] export as dot file (from cy representation?)
+* [ ] export as PNG
 
-* instantiation graph history (undo/redo)
-* syntax for formula names
-* export as PNG
-* export as dot file (from cy representation?)
-
-* selection mode for instantiation nodes and automatic criterion evaluation
+* [ ] selection mode for instantiation nodes and automatic criterion evaluation
     - selection indicator for selected instantiation nodes
     - show non-adjacent term nodes with less opacity
     - show relationship between input- and matching output nodes
 
+## Bonus
+
+* [ ] instantiation graph history (undo/redo)
+* [ ] save/load files
+
 ## DONE
+
+* [*] better overall UI concept
+    - [*] postpone resetting graph on editor changes (show button)
+    - [*] allow choice of initial formula
 
 * quantifier instantiation info popup DONE
 

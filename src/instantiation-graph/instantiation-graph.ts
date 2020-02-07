@@ -5,10 +5,10 @@ import * as GraphOperations from "./operations"
 import {setOf} from "./util"
 
 export enum InstantiationNodeType {
-    QUANTIFIER = "quantifier",
-    FUNC_APPL = "func_application",
-    VARIABLE = "variable",
-    CONSTANT = "constant"
+    QUANTIFIER = "instantiation-graph.quantifier",
+    FUNC_APPL = "instantiation-graph.func_application",
+    VARIABLE = "instantiation-graph.variable",
+    CONSTANT = "instantiation-graph.constant"
 }
 
 export interface InstantiationNode {
