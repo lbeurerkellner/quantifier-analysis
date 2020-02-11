@@ -101,6 +101,8 @@
     min-height: 120pt;
     flex: 1;
 
+    font-family: Menlo, Monaco, "Courier New", monospace;
+
     border: 0.5pt solid lightgray;
     background-color: #f8f8f8;
     outline: none;  

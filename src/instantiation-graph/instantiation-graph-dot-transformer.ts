@@ -47,7 +47,6 @@ export class InstantiationGraphDotTransformer {
     }
 
     transformNode(node : CyNode, maxY : number) : string {
-      console.log(node);
       return `\t${node.data.id} [label = "${node.data.label}"` +
        `, pos="${node.position?.x ?? "0"}, ${maxY - node.position?.y ?? "0"}", style="filled",` + 
        `color="${node.data["background-color"] ?? "#bdc5f2"}"];`;
