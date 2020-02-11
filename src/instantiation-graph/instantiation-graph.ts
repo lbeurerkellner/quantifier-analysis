@@ -87,7 +87,7 @@ export class InstantiationGraph {
         existingTriggerTerms = new Map<FunctionApplicationExpr, FunctionApplicationNode>(), 
         isForwardDirection: boolean = true): QuantifierInstantiationNode {
         let q : QuantifierInstantiationNode = {
-            name: "q" + (this.ctr++),
+            name: "q" + (this.ctr++) + " : " + formula.name,
             type: InstantiationNodeType.QUANTIFIER,
             formula: formula,
             matched: setOf(),

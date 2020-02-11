@@ -29,6 +29,7 @@ export class Toolbar extends React.Component<ToolbarProps, {selectedFormula: num
             <button onClick={() => window.open("help.html", "blank")}>Help</button>
         </div>
     }
+    // <button>Export as .png</button>
 
     renderFormulaSelect() {
         return <select onChange={this.onChangeFormulaSelection.bind(this)} value={this.state.selectedFormula}>

@@ -10,7 +10,7 @@ const CytoscapeStylesheet = [{
   selector: 'node',
   style: {
     'label': (e : any) => e.data("label") || "",
-    'font-size': '16pt',
+    'font-size': '10pt',
     'text-valign': 'center',
     'color': '#000000',
     'background-color': (e : any) => e.data("background-color") || '#bdc5f2', 

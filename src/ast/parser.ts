@@ -91,7 +91,7 @@ class ASTPreprocessor {
     processFormula(root : Root, formula : Formula, index : number) : Formula {
         const processedFormula : Formula = {
             type: formula.type,
-            name: "f" + index,
+            name: formula.name,
             variables: formula.variables.map(this.processVariable.bind(this, index)),
             pattern: null as unknown as FunctionApplicationExpr[],
             body: null as unknown as Expr,

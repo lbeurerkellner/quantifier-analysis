@@ -13,9 +13,10 @@ formulas
   / formula:formula
 
 formula
-  = "forall" WS vars:variable_list WS pat:trigger_pattern? WS body:expr_list ";" { 
+  = name:IDENTIFIER WS ":" WS "forall" WS vars:variable_list WS pat:trigger_pattern? WS body:expr_list ";" { 
     return [{
       "type": "formula", 
+      "name": name,
       "variables": vars, 
       "pattern": pat,
       "body": body,

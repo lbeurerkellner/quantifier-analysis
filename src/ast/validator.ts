@@ -25,6 +25,16 @@ export class Validator {
     validate(ast : Root) {
         //this.addError(ast.formulas[0], "Test Error", "test.error");
         ast.formulas.forEach(f => this.validateNode(f, []));
+
+        let formulaNameMap = new Map<string, Formula[]>();
+        ast.formulas.forEach(f => {
+            formulaNameMap.set(f.name, [...(formulaNameMap.get(f.name) || []), f]);
+        });
+        ast.formulas.forEach(f => { 
+            if (formulaNameMap.get(f.name)!.length > 1) {
+                this.addError(f, `Duplicate formula name ${f.name}`, "error.formula-name");
+            }
+        });
     }
 
     validateNode(astNode : AstNode, parent : AstNode[]) {
