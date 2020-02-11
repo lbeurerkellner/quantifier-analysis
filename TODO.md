@@ -1,8 +1,4 @@
 ## TODO
-* [ ] syntax for formula names
-* [ ] export as dot file (from cy representation?)
-* [ ] export as PNG
-
 * [ ] selection mode for instantiation nodes and automatic criterion evaluation
     - selection indicator for selected instantiation nodes
     - show non-adjacent term nodes with less opacity
@@ -10,11 +6,13 @@
 
 ## Bonus
 
+* [ ] export as PNG
 * [ ] instantiation graph history (undo/redo)
 * [ ] save/load files
 
 ## DONE
 
+* [*] syntax for formula names
 * [*] better overall UI concept
     - [*] postpone resetting graph on editor changes (show button)
     - [*] allow choice of initial formula

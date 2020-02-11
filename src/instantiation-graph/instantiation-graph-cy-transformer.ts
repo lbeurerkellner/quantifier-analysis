@@ -4,17 +4,17 @@ import { AstNode } from '../ast/parser';
 import { QuantifierInstantiationNode, InstantiationNode, InstantiationNodeType, FunctionApplicationNode, VariableNode, ConstantNode, TermNode, InstantiationGraph } from './instantiation-graph';
 
 const EdgeStyleMatches = {
-    "line-color": "rgb(187, 100, 237)",
-    "target-arrow-color": "rgb(187, 100, 237)",
+    "line-color": "#BB64ED",
+    "target-arrow-color": "#BB64ED",
     "line-style": "dashed"
 }
 const EdgeStyleInstantiates = {
-    "line-color": "rgb(219, 228, 83)",
-    "target-arrow-color": "rgb(219, 228, 83)",
+    "line-color": "#DBE453",
+    "target-arrow-color": "#DBE453",
     "line-style": "dashed"
 }
 const EdgeStyleEquality = {
-    "line-color": "rgb(37, 106, 49)",
+    "line-color": "#256A31",
     "line-style": "dashed",
     "line-width": "1pt",
     "target-arrow-shape": "none"
@@ -84,7 +84,7 @@ export class InstantiationGraphCyTransformer {
         let nodes: any[] = [{ data: { 
                 id: qiNodeId, 
                 label: qi.name,
-                "background-color": "rgb(240, 235, 158)",
+                "background-color": "#F0EB9E",
                 instantiationNode: qi
             },
             position: this.layout.position(qi)
@@ -183,7 +183,7 @@ export class InstantiationGraphCyTransformer {
         let nodes: any[] = [{ data: { 
                 "id": nodeId, 
                 "label": v.name,
-                "background-color": "rgb(196, 69, 69)",
+                "background-color": "#C44545",
                 instantiationNode: v
             },
             position: this.layout.position(v)
@@ -204,7 +204,7 @@ export class InstantiationGraphCyTransformer {
         let nodes: any[] = [{ data: { 
                 "id": nodeId, 
                 "label": "<constant>",
-                "background-color": "rgb(196, 69, 69)",
+                "background-color": "#C44545",
                 instantiationNode: c
             },
             position: this.layout.position(c)

@@ -11,6 +11,7 @@ import Editor from './Editor';
 import Graph from './Graph';
 import { InstantiationGraph, InstantiationNodeType, QuantifierInstantiationNode, TermNode } from './instantiation-graph/instantiation-graph';
 import { InstantiationGraphCyTransformer } from './instantiation-graph/instantiation-graph-cy-transformer';
+import { InstantiationGraphDotTransformer } from './instantiation-graph/instantiation-graph-dot-transformer';
 import { InstantiationGraphLayout, NodePosition } from './instantiation-graph/instantiation-graph-layout';
 import { backwardStep, BackwardStepCandidate, completeBindings, forwardStep, ForwardStepCandidate, GraphOperationCandidate, GraphOperationType } from './instantiation-graph/operations';
 import State from './state';
@@ -31,6 +32,7 @@ interface AppState {
   instantiationGraph : InstantiationGraph|null
   layout : InstantiationGraphLayout|null,
   instantiationCyGraph : any[]
+  instantiationDotGraph : string
   instGraphTraces : Map<string, AstNode>
   // ast inputText hash based on which the current
   // graph has been generated
@@ -61,6 +63,7 @@ class App extends React.Component<{}, AppState> {
       instantiationGraph: null,
       layout: null,
       instantiationCyGraph: [],
+      instantiationDotGraph: "",
       instGraphTraces: new Map<string, AstNode>(),
       graphHash : "",
       
@@ -81,6 +84,7 @@ class App extends React.Component<{}, AppState> {
           isFresh={this.state.instantiationCyGraph.length === 0}
           formulas={this.state.ast?.formulas ?? []}
           onReset={this.initialiseGraph.bind(this)}
+          graphDotEncoded={this.state.instantiationDotGraph}
         />
         <div className="content">
           <div className="editor-pane">
@@ -220,14 +224,22 @@ class App extends React.Component<{}, AppState> {
     const iNode = node.data("instantiationNode");
     if (iNode && this.state.layout) {
       this.state.layout?.updatePosition(iNode, position);
+      this.setState({
+        instantiationDotGraph: new InstantiationGraphDotTransformer().transform(this.state.instantiationCyGraph)
+      })
     }
   }
 
   updateGraphRepresentation(instantiationGraph : InstantiationGraph, layout : InstantiationGraphLayout, ast : Root) {
     const {graphDescription: instGraphCyRepr,
       traces: instGraphTraces} = new InstantiationGraphCyTransformer().transform(instantiationGraph, layout);
+    const dotEncoded = new InstantiationGraphDotTransformer().transform(instGraphCyRepr);
     
-    return {instantiationCyGraph: instGraphCyRepr, instGraphTraces: instGraphTraces}
+    return {
+      instantiationCyGraph: instGraphCyRepr, 
+      instGraphTraces: instGraphTraces,
+      instantiationDotGraph: dotEncoded
+    }
   }
 
   onStateUpdate(key : string, value : any) {

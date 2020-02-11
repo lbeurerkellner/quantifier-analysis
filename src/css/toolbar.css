@@ -10,7 +10,7 @@
     line-height: 30pt;
 }
 
-.toolbar button.primary {
+.toolbar button.toolbar-button.primary {
     border-radius: 2pt;
     border-width: 0;
 
@@ -18,22 +18,29 @@
     border: 0.5pt solid grey;
 }
 
-.toolbar button.primary:hover {
+.toolbar button.toolbar-button.primary:hover {
     text-decoration: none;
     background-color: rgb(223, 223, 223);
 }
 
-.toolbar button.primary:active {
+.toolbar button.toolbar-button.primary:active {
     text-decoration: none;
     background-color: rgb(194, 194, 194);
 }
 
-.toolbar button:hover {
+.toolbar button.toolbar-button[disabled],
+.toolbar button.toolbar-button:hover[disabled] {
+    text-decoration: none;
+    color: grey;
+    cursor: default;
+}
+
+.toolbar button.toolbar-button:hover {
     text-decoration: underline;
     cursor: pointer;
 }
 
-.toolbar button {
+.toolbar button.toolbar-button {
     background: none;
     color: black;
     font-size: 10pt;
@@ -44,4 +51,51 @@
 .toolbar select {
     margin-top: auto;
     margin-bottom: auto;
+}
+
+.toolbar-popup {
+    display: block;
+    position: absolute;
+    top: 32pt;
+    width: 220px;
+    border-radius: 2pt;
+    padding: 4pt;
+    background-color: white;
+    border: 0.5pt solid lightgray;
+}
+
+.toolbar-popup {
+    font-size: 8pt;
+    line-height: 10pt;
+    text-align: left;
+    color: grey;
+}
+
+.toolbar-popup:after {
+    content: '';
+    display: block;
+    position: absolute;
+    right: 10pt;
+    bottom: 100%;
+    width: 0;
+    height: 0;
+    border-bottom: 10px solid rgb(189, 185, 185);
+    border-top: 10px solid transparent;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+}
+
+.toolbar-popup .content {
+    display: flex;
+    flex-direction: column;
+}
+
+.toolbar-popup .content textarea {
+    display: block;
+    min-height: 120pt;
+    flex: 1;
+
+    border: 0.5pt solid lightgray;
+    background-color: #f8f8f8;
+    outline: none;  
 }
