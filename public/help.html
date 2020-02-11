@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Help</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        pre {
+            background-color: rgb(243, 243, 243);
+            display: block;
+            border-radius: 2pt;
+            padding: 5pt;
+            border: 0.5pt solid grey;
+        }
+    </style>
+</head>
+<body>
+    <h1>Help</h1>
+
+    This document describes the high-level features of the instantiation graph editor.
+
+    <h2>Getting Started</h2>
+
+    To get started, use the editor on the left to define a set of quantified formulas. For example, you may use the following pair of formulas:
+    <pre>
+forall x {f(x)} g(h(x));
+
+forall x {g(x)} f(x);
+    </pre>
+
+    <p>Based on these formulas, we can now construct an instantiation graph. In the toolbar at the top of the screen, choose the formula you want to start with in the graph construction. Next, press the Create Graph button.</p>
+
+    <p>In the graph view on the right, you can now see the intial formula instantiation. The graph includes all instantiated ground terms as well as the assumed ground terms, required to match the trigger patterns of the selected formula.</p>
+
+    <p>Terms in the graph which highlighted with a green or red border, allow for further expansion of the instantiation graph (forward and backward steps i.e. further possible formula instantiations). A click on these terms will present a list of possible forward and backward steps.</p>
+
+    <p>By application of the offered graph expansion operations, the instantiation graph can be explored to gain a better understanding of the interactions among the provided quantified formulas and their trigger patterns.</p>
+
+    <h2>User Interface</h2>
+
+    The user interface comprises of two main components:
+
+    <ul>
+        <li><b>Formula Editor: </b> In this editor on the left, you can define the formulas to be analysed. For a brief description of the supported syntax see <a href="#formula-syntax">Formula Syntax</a>. </li>
+        <li><b>Instantiation Graph:</b> In this component, you can construct an instantiation graph based on an initially chosen formula instantiation. For the details of the instantiation graph construction see <a href=#graph-construction">Graph Construction</a>.</li>
+    </ul>
+
+    <h2 id="formula-syntax">Formula Syntax</h2>
+
+    <h2 id="graph-construction">Graph Construction</h2>
+</body>
+</html>

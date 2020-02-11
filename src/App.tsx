@@ -14,7 +14,8 @@ import { InstantiationGraphCyTransformer } from './instantiation-graph/instantia
 import { InstantiationGraphLayout, NodePosition } from './instantiation-graph/instantiation-graph-layout';
 import { backwardStep, BackwardStepCandidate, completeBindings, forwardStep, ForwardStepCandidate, GraphOperationCandidate, GraphOperationType } from './instantiation-graph/operations';
 import State from './state';
-import { Toolbar } from "./Toolbar";
+import { StatusBar } from "./StatusBar";
+import { Toolbar } from './Toolbar';
 
 
 // parser components and transformers
@@ -76,27 +77,33 @@ class App extends React.Component<{}, AppState> {
   render() {
     return (
       <div className="app">
-        <div className="editor-pane">
-          <Editor markerData={this.state.markers} decorations={this.state.editorDecorations}/>
-          <Toolbar isFresh={this.state.instantiationCyGraph.length === 0}
-            formulas={this.state.ast?.formulas ?? []}
-            isDirty={this.state.markers.length === 0 && this.state.graphHash !== strHasher(this.state.ast?.inputText ?? "")}
-            onReset={this.initialiseGraph.bind(this)}/>
-        </div>
-        <Graph 
-          graphHash={this.state.graphHash}
-          graph={this.state.instantiationCyGraph} 
-          onTapNode={this.onTapNode.bind(this, "inst")}
-          onSecondaryTapNode={this.onSecondaryTapNode.bind(this, "inst")} 
-          onCanvasMove={this.onGraphCanvasMove.bind(this)}
-          onNodePositionChange={this.onNodePositionChange.bind(this)}
-          layout="preset"
-          ref={ref => {this.graphViewOffsetLeft = ref?.graphContainer?.offsetLeft || 0;}}/>
-        <ActionPopup 
-          anchorPoint={this.state.popupAnchor || undefined} 
-          popupContent={this.state.popupContent}
-          onApplyOperation={this.onApplyGraphOperation.bind(this)}
+        <Toolbar
+          isFresh={this.state.instantiationCyGraph.length === 0}
+          formulas={this.state.ast?.formulas ?? []}
+          onReset={this.initialiseGraph.bind(this)}
         />
+        <div className="content">
+          <div className="editor-pane">
+            <Editor markerData={this.state.markers} decorations={this.state.editorDecorations}/>
+            <StatusBar isFresh={this.state.instantiationCyGraph.length === 0}
+              isDirty={this.state.markers.length === 0 && this.state.graphHash !== strHasher(this.state.ast?.inputText ?? "")}
+            />
+          </div>
+          <Graph 
+            graphHash={this.state.graphHash}
+            graph={this.state.instantiationCyGraph} 
+            onTapNode={this.onTapNode.bind(this, "inst")}
+            onSecondaryTapNode={this.onSecondaryTapNode.bind(this, "inst")} 
+            onCanvasMove={this.onGraphCanvasMove.bind(this)}
+            onNodePositionChange={this.onNodePositionChange.bind(this)}
+            layout="preset"
+            ref={ref => {this.graphViewOffsetLeft = ref?.graphContainer?.offsetLeft || 0;}}/>
+          <ActionPopup 
+            anchorPoint={this.state.popupAnchor || undefined} 
+            popupContent={this.state.popupContent}
+            onApplyOperation={this.onApplyGraphOperation.bind(this)}
+          />
+        </div>
       </div>
     );
   }
