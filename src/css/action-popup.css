@@ -41,6 +41,11 @@
 
 .action-item .content {
     padding: 4pt;
+    display: flex;
+}
+
+.action-item .content>div {
+    flex: 1;
 }
 
 .action-item .actions {

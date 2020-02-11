@@ -34,6 +34,7 @@ export class Toolbar extends React.Component<ToolbarProps, ToolbarState> {
                 onClick={() => this.props.onReset(this.props.formulas[this.state.selectedFormula])}>
                 {this.props.isFresh ? "Create Graph" : "Reset Graph"}
             </button>
+            with
             {this.renderFormulaSelect()}
             <div style={{flex: "1"}}/>
             <button 
