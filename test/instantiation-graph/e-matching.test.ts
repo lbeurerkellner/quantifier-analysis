@@ -10,7 +10,7 @@ describe('E-Matching', () => {
     expect(bindings).to.have.lengthOf(1);
 
     const binding = bindings[0];
-    const xBinding = binding.get("f0.x") as VariableNode;
+    const xBinding = binding.get("F0.x") as VariableNode;
 
     expect(xBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
     expect(xBinding.name).to.be.equal("y");
@@ -21,7 +21,7 @@ describe('E-Matching', () => {
     expect(bindings).to.have.lengthOf(1);
 
     const binding = bindings[0];
-    const xBinding = binding.get("f0.x") as FunctionApplicationNode;
+    const xBinding = binding.get("F0.x") as FunctionApplicationNode;
 
     expect(xBinding.type).to.be.equal(InstantiationNodeType.FUNC_APPL);
     expect(xBinding.name).to.be.equal("g");
@@ -45,8 +45,8 @@ describe('E-Matching', () => {
     expect(bindings).to.have.lengthOf(1);
 
     const binding = bindings[0];
-    const xBinding = binding.get("f0.x") as VariableNode;
-    const yBinding = binding.get("f0.y") as VariableNode;
+    const xBinding = binding.get("F0.x") as VariableNode;
+    const yBinding = binding.get("F0.y") as VariableNode;
 
     expect(xBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
     expect(xBinding.name).to.be.equal("a");
@@ -62,7 +62,7 @@ describe('E-Matching', () => {
     const binding = bindings[0];
   
     for (let idx of [1, 2, 3, 4, 5]) {
-      const varBinding = binding.get("f0.a"+idx) as VariableNode;
+      const varBinding = binding.get("F0.a"+idx) as VariableNode;
       expect(varBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
       expect(varBinding.name).to.be.equal("b"+idx);
     }
@@ -75,7 +75,7 @@ describe('E-Matching', () => {
     const binding = bindings[0];
   
     {
-      let varBinding = binding.get("f0.a1") as FunctionApplicationNode;
+      let varBinding = binding.get("F0.a1") as FunctionApplicationNode;
       expect(varBinding.type).to.be.equal(InstantiationNodeType.FUNC_APPL);
       expect(varBinding.name).to.be.equal("g");
       expect(varBinding.arguments).to.have.lengthOf(1);
@@ -83,7 +83,7 @@ describe('E-Matching', () => {
     }
 
     {
-      let varBinding = binding.get("f0.a2") as VariableNode;
+      let varBinding = binding.get("F0.a2") as VariableNode;
       expect(varBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
       expect(varBinding.name).to.be.equal("b2");
     }
@@ -96,13 +96,13 @@ describe('E-Matching', () => {
     const binding = bindings[0];
   
     {
-      let varBinding = binding.get("f0.a1") as FunctionApplicationNode;
+      let varBinding = binding.get("F0.a1") as FunctionApplicationNode;
       expect(varBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
       expect(varBinding.name).to.be.equal("b3");
     }
 
     {
-      let varBinding = binding.get("f0.a2") as VariableNode;
+      let varBinding = binding.get("F0.a2") as VariableNode;
       expect(varBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
       expect(varBinding.name).to.be.equal("b2");
     }
@@ -114,26 +114,26 @@ describe('E-Matching', () => {
 
     const binding1 = bindings[0];
     {
-      let varBinding = binding1.get("f0.a1") as FunctionApplicationNode;
+      let varBinding = binding1.get("F0.a1") as FunctionApplicationNode;
       expect(varBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
       expect(varBinding.name).to.be.equal("b3");
     }
 
     {
-      let varBinding = binding1.get("f0.a2") as VariableNode;
+      let varBinding = binding1.get("F0.a2") as VariableNode;
       expect(varBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
       expect(varBinding.name).to.be.equal("b2");
     }
 
     const binding2 = bindings[1];
     {
-      let varBinding = binding2.get("f0.a1") as FunctionApplicationNode;
+      let varBinding = binding2.get("F0.a1") as FunctionApplicationNode;
       expect(varBinding.type).to.be.equal(InstantiationNodeType.VARIABLE);
       expect(varBinding.name).to.be.equal("b3");
     }
 
     {
-      let varBinding = binding2.get("f0.a2") as FunctionApplicationNode;
+      let varBinding = binding2.get("F0.a2") as FunctionApplicationNode;
       expect(varBinding.name).to.be.equal("g");
       expect(varBinding.type).to.be.equal(InstantiationNodeType.FUNC_APPL);
       expect(varBinding.arguments).to.have.lengthOf(1);
@@ -148,11 +148,11 @@ function synthesiseFormula(term : string) : string {
   const parser = new Parser();
   // preliminary parse, results in broken AST since not all variables in term
   // may be declared on formula-level
-  const preliminaryAst = parser.parse("forall x {f(x)} " + term + ";");
+  const preliminaryAst = parser.parse("F0: forall x {f(x)} " + term + ";");
   const variableNames = (Array.from(new Set(findTerms(preliminaryAst.formulas[0].body)))
     .filter(t => t.type && t.type === NodeType.CONSTANT) as Constant[])
     .map(c => c.name).join(", ");
-  return `forall ${variableNames} {testPattern(${variableNames})} ${term};`;
+  return `F0: forall ${variableNames} {testPattern(${variableNames})} ${term};`;
 }
 
 function parseTerm(term : string) : Expr {

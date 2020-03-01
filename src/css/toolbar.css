@@ -55,6 +55,24 @@
     margin-bottom: auto;
 }
 
+.toolbar .separator {
+    flex: 1;
+    display: flex;
+}
+
+.toolbar .separator .devbuild {
+    flex: 1;
+    font-weight: bold;
+    color: darkred;
+    background-color:  yellow;
+    border: 2pt solid black;
+    margin: 5pt;
+    line-height: 16pt;
+    max-width: 200pt;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 .toolbar-popup {
     display: block;
     position: absolute;

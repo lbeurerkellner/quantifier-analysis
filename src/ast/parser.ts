@@ -92,7 +92,7 @@ class ASTPreprocessor {
         const processedFormula : Formula = {
             type: formula.type,
             name: formula.name,
-            variables: formula.variables.map(this.processVariable.bind(this, index)),
+            variables: formula.variables.map(this.processVariable.bind(this, formula.name)),
             pattern: null as unknown as FunctionApplicationExpr[],
             body: null as unknown as Expr,
             location: formula.location,
@@ -104,11 +104,11 @@ class ASTPreprocessor {
         return processedFormula;
     }
 
-    processVariable(index : number, variable : Variable) : Variable {
+    processVariable(formulaName : string, variable : Variable) : Variable {
         const v : Variable = {
             ...variable,
             name: variable.name,
-            globalName: "f" + index + "." + variable.name
+            globalName: formulaName + "." + variable.name
         }
         return v;
     }

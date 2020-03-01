@@ -36,7 +36,9 @@ export class Toolbar extends React.Component<ToolbarProps, ToolbarState> {
             </button>
             with
             {this.renderFormulaSelect()}
-            <div style={{flex: "1"}}/>
+            <div className="separator">
+              {window.location.host.startsWith("localhost:") ? <div className="devbuild">Local Build</div> : ""}
+            </div>
             <button 
               className="toolbar-button" 
               disabled={this.props.graphDotEncoded.length === 0}

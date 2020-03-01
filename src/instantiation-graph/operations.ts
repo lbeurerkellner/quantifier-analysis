@@ -1,6 +1,6 @@
-import { Formula, FunctionApplicationExpr, ExprNode } from './../ast/parser';
+import { Expr, Formula, FunctionApplicationExpr, ExprNode, Constant, Variable, NodeType } from './../ast/parser';
 import { match, mergeBindings } from './e-matching';
-import { TermNode, InstantiationGraph, InstantiationNodeType, QuantifierInstantiationNode, instantiatedPath, VariableNode, findTerms, ConstantNode, FunctionApplicationNode } from './instantiation-graph';
+import { findEqualities, TermNode, InstantiationGraph, InstantiationNodeType, QuantifierInstantiationNode, instantiatedPath, VariableNode, findTerms, ConstantNode, FunctionApplicationNode, path } from './instantiation-graph';
 import {setOf, zip, multiMap} from "./util"
 import { bodyMatch } from './body-matching';
 
@@ -236,6 +236,8 @@ export function merge(graph : InstantiationGraph, oldTermNode : TermNode, newTer
         const eqClass = new Set(variableOrConstant.equivalenceClass);
         eqClass.delete(variableOrConstant);
         eqClass.forEach(e => newTermNode.equivalenceClass.add(e))
+        // set updated equivalence class for all members of eqClass
+        eqClass.forEach(e => e.equivalenceClass = newTermNode.equivalenceClass);
 
         // .references (rewire references to oldTermNode to newTermNode)
         variableOrConstant.references.forEach(r => newTermNode.references.add(r));
@@ -296,10 +298,16 @@ export function rewireReference(graph : InstantiationGraph, referenceFa : Functi
 }
 
 export function computePossibleBackwardMatches(instantiationGraph : InstantiationGraph, terms : TermNode[], formulas : Formula[]) : BackwardStepCandidate[] {
+    const qNodes = (Array.from(instantiationGraph.entryNodes)
+        .filter(n => n.type === InstantiationNodeType.QUANTIFIER) as QuantifierInstantiationNode[]);
+    
     return terms.flatMap(termNode => {
         return formulas.flatMap(formula => {
             const formulaTerms = findTerms(formula.body);
-            
+            const formulaQNodes = qNodes.filter(q => q.formula === formula);
+            const formulaEqualities = findEqualities(formula.body)
+            const plainBindings = completeBindings(formula, new Map());
+
             return formulaTerms.flatMap(term => { // determine set of matching formula terms
                 return bodyMatch(term, termNode);
             }).map(bodyBinding => { // construct backward-step candidates from body bindings
@@ -310,10 +318,131 @@ export function computePossibleBackwardMatches(instantiationGraph : Instantiatio
                     type: GraphOperationType.BACKWARD_STEP
                 };
                 return b;
+            }).filter(candidate => {
+                // TODO: we need to check here whether for each q.bindings is equivalent to the most-generic binding of candidate.formula
+                // after applying candidate.bodyBindings. For this we need to consider pre-existing equalities in the graph, 
+                // but also equalities arising from the body of candidate.formula.
+                // Idea: 
+                // (1) compute transitive equality closure C of all variables of formula (equalities of style x = t)
+                // (2) for each RHS of equalities in C apply bodyBindings in reverse which gives us a set of instantiated term nodes per equality RHS
+                //      - consider non-injective bindings e.g. {x -> f(x), y -> f(y)}
+                // (3) check each binding in q.binding to be in the equivalence class of the obtained instantiated term nodes
+
+                //// Step (1)
+                // compute formula-body specific equivalence classes
+                const equivalenceClasses = new Map<Expr, Set<ExprNode>>();
+                formulaEqualities.forEach(eq => {
+                    const lhsClass = equivalenceClasses.get(eq.lhs) || new Set<ExprNode>()
+                    const rhsClass = equivalenceClasses.get(eq.rhs) || new Set<ExprNode>()
+                    const newClass = new Set(lhsClass);
+                    rhsClass.forEach(n => newClass.add(n));
+                    newClass.add(eq.lhs as ExprNode);
+                    newClass.add(eq.rhs as ExprNode);
+                    equivalenceClasses.set(eq.lhs, newClass);
+                    equivalenceClasses.set(eq.rhs, newClass);
+                })
+
+                // construct equivalence classes of all variables in formula
+                const variableEquivalenceClasses = new Map<string, Set<ExprNode>>();
+                Array.from(equivalenceClasses.values()).forEach(eqClass => {
+                    const constants = Array.from(eqClass).filter(n => typeof (n as Constant)?.referencesVariable === "object") as Constant[];
+                    constants.forEach(c => {
+                        variableEquivalenceClasses.set(c.referencesVariable!.globalName, eqClass)
+                    });
+                })
+                formula.variables.forEach(v => {
+                    if (!variableEquivalenceClasses.has(v.globalName)) {
+                        variableEquivalenceClasses.set(v.globalName, new Set());
+                    }
+                })
+
+                //// Step (2) for each RHS of equalities in C apply bodyBindings in reverse which gives us a set of equivalent instantiated term nodes per variable 
+                // binding
+                //      - consider non-injective bindings e.g. {x -> f(x), y -> f(y)}
+                
+                // invert body bindings
+                let invertedBodyBindings = new Map<string, TermNode[]>();
+                candidate.bodyBindings.forEach((value, key, map) => {
+                    let p = path(value as any, plainBindings);
+                    let existing = invertedBodyBindings.get(p) || [];
+                    existing.push(key);
+                    invertedBodyBindings.set(p, existing);
+                });
+
+                const variableEquivalentTerms = new Map<string, Set<TermNode>>(Array.from(variableEquivalenceClasses.entries()).map(entry => {
+                    return [
+                        entry[0],
+                        new Set(Array.from(entry[1]).flatMap(exprNode => {
+                            // compute all path synonyms considering the invertedBodyBindings, the given exprNode
+                            // will be found under in the current graph
+                            let pathSynonyms = computeExpressionPaths(exprNode, invertedBodyBindings, plainBindings);
+                            let terms : TermNode[] = pathSynonyms.filter(p => instantiationGraph.cache.has(p)).map(p => instantiationGraph.cache.get(p)!);
+                            // extend by transitive equality closure
+                            terms = [...terms, ...terms.flatMap(t => Array.from(t.equivalenceClass))];
+                            return terms;
+                        }))
+                    ];
+                }));
+                
+                console.log("Inverted body bindings", invertedBodyBindings);
+                // console.log("Inverted Bindings", invertedBodyBindings);
+                console.log("New variable equivalence terms", variableEquivalentTerms);
+                console.log("Check against instantiations", formulaQNodes);
+                
+                const instantiationWithEquivalentBinding = formulaQNodes.find(q => {
+                    //// Step (3) check each binding in q.binding to be in the equivalence class of the obtained instantiated term nodes
+                    const atLeastOneNonEquivalentBinding = Array.from(q.bindings.entries()).find((entry : [string, TermNode]) => {
+                        return !(new Set(variableEquivalentTerms.get(entry[0]) || [])).has(entry[1])
+                    });
+                    return !atLeastOneNonEquivalentBinding;
+                })
+                return !instantiationWithEquivalentBinding; // no such other instantiation node must exist
             })
         })
     });
 }
+
+export function computeExpressionPaths(node : Expr, invertedBodyBindings : Map<string, TermNode[]>, bindings : Map<string, TermNode>) : string[] {
+    if (Array.isArray(node)) {
+        throw new Error("Cannot compute expression path for array-based expression.");
+    }
+
+    const results : string[] = [];
+    const p = path(node as FunctionApplicationExpr|Variable|Constant, bindings)
+
+    // include path synonyms that arise due to body bindings
+    if (invertedBodyBindings.has(p)) {
+        invertedBodyBindings.get(p)!.forEach(term => results.push(instantiatedPath(term, true)));
+        return results;
+    }
+
+    // check standard cases
+    switch (node.type) {
+        case NodeType.FUNC_APPLICATION:
+            const fa = node as FunctionApplicationExpr;
+            // compute all possible expression paths for each of the arguments
+            const argPaths : string[][] = fa.args.map(a => computeExpressionPaths(a, invertedBodyBindings, bindings));
+            // consider all combinations of different expression paths per argument
+            return [...Array.from(combinations(argPaths)).map(c => {
+                return fa.name + "(" + c.join(", ") + ")";
+            }), ...results]
+        case NodeType.VARIABLE:
+            return [(node as Variable).globalName, ...results];
+        case NodeType.CONSTANT:
+            const constant = node as Constant;
+            if (constant.referencesVariable) {
+                const globalName = constant.referencesVariable!.globalName;
+                if (bindings.has(globalName)) {
+                    return [instantiatedPath(bindings.get(globalName)!, true), ...results];
+                } else {
+                    return [globalName, ...results];
+                }
+            }
+            return [(node as Constant).name, ...results];
+    }
+    throw new Error("Unhandled AST element type in path computation " + node.type);
+}
+
 
 /**
  * Completes the provided bindings to be used as an instantiating binding 
@@ -412,12 +541,15 @@ function equalBindings(lhs : Binding, rhs : Binding) : boolean {
     if (lhs.size !== rhs.size) {
         return false;
     }
+
     return !Array.from(lhs.entries()).find(e => {
         // search for mismatching binding
         let rhsTerm = rhs.get(e[0]);
         // check for missing mapping in rhs
         if (!rhsTerm) { return true; }
         let lhsTerm = e[1]
-        return instantiatedPath(rhsTerm!) !== instantiatedPath(lhsTerm);
+        // check for syntactic equivalence as well as mathematical equivalence
+        return instantiatedPath(rhsTerm!) !== instantiatedPath(lhsTerm) 
+            && !lhsTerm!.equivalenceClass.has(rhsTerm);
     });
 }

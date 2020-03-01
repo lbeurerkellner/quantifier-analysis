@@ -40,7 +40,7 @@ export class InstantiationGraphDotTransformer {
       nodes.forEach(n => maxY = Math.max(n.position.y, maxY));
 
       return "digraph G {" + LB
-            + `graph [splines = "curved"]` + LB 
+            // + `graph [splines = "curved"]` + LB 
             + nodes.map(n => this.transformNode(n, maxY)).join(LB) + LB + LB
             + edges.map(e => this.transformEdge(e)).join(LB) + LB
             + "}" + LB;

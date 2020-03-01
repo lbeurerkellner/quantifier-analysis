@@ -1,57 +1,49 @@
-import { BodyBinding } from './../../src/instantiation-graph/body-matching';
-import { QuantifierInstantiationNode, TermNode, getAstElement, FunctionApplicationNode, InstantiationNodeType, instantiatedPath, path } from './../../src/instantiation-graph/instantiation-graph';
-import { Parser, Expr, NodeType, Constant, ExprNode, Formula, FunctionApplicationExpr } from './../../src/ast/parser';
+import { BodyBinding, bodyMatch } from './../../src/instantiation-graph/body-matching';
+import { FunctionApplicationNode, VariableNode, InstantiationNodeType, getAstElement, TermNode, QuantifierInstantiationNode, instantiatedPath, path } from './../../src/instantiation-graph/instantiation-graph';
+import { Parser, Expr, FunctionApplicationExpr, Formula, NodeType, Constant, ExprNode } from './../../src/ast/parser';
 import { expect } from 'chai';
-import { bodyMatch } from '../../src/instantiation-graph/body-matching';
+import { match } from '../../src/instantiation-graph/e-matching';
 import { InstantiationGraph, findTerms } from '../../src/instantiation-graph/instantiation-graph';
-import { completeBindings } from '../../src/instantiation-graph/operations';
+import {completeBindings, computeExpressionPaths} from '../../src/instantiation-graph/operations';
 
-describe('Body Matching', () => {
-  it('should body match with identity binding', () => {
-    const bindings = matchBody("f(x)", "f(x)");
-    expect(bindings).to.have.lengthOf(1);
+describe('Expression Paths', () => {
+    it('should detect path synonym in case of renaming a variable by replacement', () => {
+        const f0 = parseFormula("F0: forall x {f(x)} g(x);");
+        const q = instantiateFormula(f0);
+        const xVar = (Array.from(q.instantiated)
+            .filter(n => (n as FunctionApplicationNode)?.arguments)[0] as any).arguments[0];
 
-    const binding = bindings[0];
-    expect(bindingFor(binding, "F0.x")).to.be.equal("F0.x");
-  });
+        const f1 = parseFormula("F1: forall y {h(y)} f(y);");
+        const fOfY = (f1.body as any)[0];
+        const plainBindings = completeBindings(f1, new Map());
 
-  it('should body match with single function application binding', () => {
-    const bindings = matchBody("f(x)", "f(g(x))");
-    expect(bindings).to.have.lengthOf(1);
 
-    const binding = bindings[0];
-    expect(bindingFor(binding, "F0.x")).to.be.equal("g(F0.x)");
-  });
+        const paths = computeExpressionPaths(fOfY, 
+            new Map([["F1.y", [xVar] as TermNode[]]]),
+            plainBindings);
+        
+        expect(paths).to.contain("f(F0.x)");
+        expect(paths).to.contain("f(F1.y)");
+    });
 
-  it('should body match with function application with multiple arguments', () => {
-    const bindings = matchBody("f(x, y)", "f(g(x), g(x))");
-    expect(bindings).to.have.lengthOf(1);
+    it('should detect path synonym in case of replaced expression as argument', () => {
+    const f0 = parseFormula("F0: forall x {f(x)} g(x);");
+        const q = instantiateFormula(f0);
+        const xVar = (Array.from(q.instantiated)
+            .filter(n => (n as FunctionApplicationNode)?.arguments)[0] as any).arguments[0];
 
-    const binding = bindings[0];
-    expect(bindingFor(binding, "F0.x")).to.be.equal("g(F0.x)");
-    expect(bindingFor(binding, "F0.y")).to.be.equal("g(F0.x)");
-  });
+        const f1 = parseFormula("F1: forall y {i(y)} g(h(y)) and f(h(y));");
+        const g_h_y = (f1.body as any)[0].lhs;
+        const plainBindings = completeBindings(f1, new Map());
 
-  it('should body match with function application with multiple arguments (one is identity binding)', () => {
-    const bindings = matchBody("f(x, y)", "f(g(x), y)");
-    expect(bindings).to.have.lengthOf(1);
-
-    const binding = bindings[0];
-    expect(bindingFor(binding, "F0.x")).to.be.equal("g(F0.x)");
-    expect(bindingFor(binding, "F0.y")).to.be.equal("F0.y");
-  });
-
-  it('should not body match with insufficient structure', () => {
-    const bindings = matchBody("f(x, g(y))", "f(x, y)");
-    expect(bindings).to.have.lengthOf(0);
-  });
-
-  it('should not body match with distinct function names', () => {
-    const bindings = matchBody("f(x, y)", "g(x, y)");
-    expect(bindings).to.have.lengthOf(0);
-  });
-});
-
+        const paths = computeExpressionPaths(g_h_y, 
+            new Map([["h(F1.y)", [xVar] as TermNode[]]]),
+            plainBindings);
+        
+        expect(paths).to.contain("g(F0.x)");
+        expect(paths).to.contain("g(h(F1.y))");
+    });
+})
 
 /** Synthesises a formula declaration with term as body. The formula automatically
  * includes all quantified variables mentioned in term. */
@@ -77,6 +69,12 @@ function parseTerm(term : string) : Expr {
     const parser = new Parser();
     const ast = parser.parse(synthesiseFormula(term));
     return (ast.formulas[0].body as any)[0];
+}
+
+function parseFormula(formula : string) : Formula {
+    const parser = new Parser();
+    let ast = parser.parse(formula);
+    return ast.formulas[0];
 }
 
 function instantiateFormula(formula : Formula) : QuantifierInstantiationNode {

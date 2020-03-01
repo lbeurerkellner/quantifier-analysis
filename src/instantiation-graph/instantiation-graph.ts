@@ -428,7 +428,7 @@ export function path(node : FunctionApplicationExpr|Variable|Constant, bindings 
 /**
  * TODO: support inequalities
  */
-function findEqualities(expr : Expr) : BinaryOperation[] {
+export function findEqualities(expr : Expr) : BinaryOperation[] {
     if (expr === null) {
         return [];
     }

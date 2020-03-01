@@ -111,7 +111,7 @@ describe('Parser', () => {
 
 function parseTerm(term : string) : Expr {
   const parser = new Parser();
-  const ast = parser.parse("forall x {f(x)} " + term + ";");
+  const ast = parser.parse("F0: forall x {f(x)} " + term + ";");
 
   return ast.formulas[0].body;
 }

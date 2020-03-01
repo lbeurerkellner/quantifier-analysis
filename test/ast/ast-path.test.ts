@@ -40,7 +40,7 @@ describe('AST paths', () => {
 
     const gOfX = (f.body as any)[0].lhs as FunctionApplicationExpr;
 
-    expect(paths.get(gOfX.args[0] as ExprNode)).to.equal("f0.body.0.lhs.args.0");
+    expect(paths.get(gOfX.args[0] as ExprNode)).to.equal("F0.body.0.lhs.args.0");
   });
 
   it('pattern path from formula level', () => {
@@ -49,18 +49,18 @@ describe('AST paths', () => {
 
     const fOfX = (f.pattern as any)[0] as FunctionApplicationExpr;
 
-    expect(paths.get(fOfX.args[0] as ExprNode)).to.equal("f0.pattern.0.args.0");
+    expect(paths.get(fOfX.args[0] as ExprNode)).to.equal("F0.pattern.0.args.0");
   });
 
   it('path from formula level (multiple formulas)', () => {
-    const r = parseAst("forall x {f(x)} g(x) and (not f(x,y));forall x {f(x)} g(x) and (not f(x,y));") as Root;
+    const r = parseAst("F0: forall x {f(x)} g(x) and (not f(x,y));F1: forall x {f(x)} g(x) and (not f(x,y));") as Root;
     const f = r.formulas[1];
     
     const paths = mapNodes(f);
 
     const fOfX = (f.pattern as any)[0] as FunctionApplicationExpr;
 
-    expect(paths.get(fOfX.args[0] as ExprNode)).to.equal("f1.pattern.0.args.0");
+    expect(paths.get(fOfX.args[0] as ExprNode)).to.equal("F1.pattern.0.args.0");
   });
 
   it('resolves path function application level', () => {
@@ -80,8 +80,8 @@ describe('AST paths', () => {
   });
 
   it('resolves path root level', () => {
-    const root = parseAst("forall x {f(x)} g(x) and (not f(x,y));forall x {f(x)} g(x) and (not f(x,y));") as Root;
-    const path = "f1.body.0.lhs.args.0";
+    const root = parseAst("F0: forall x {f(x)} g(x) and (not f(x,y));F1: forall x {f(x)} g(x) and (not f(x,y));") as Root;
+    const path = "F1.body.0.lhs.args.0";
     const node = resolve(root, path);
 
     expect(node).to.be.equal((root as any).formulas[1].body[0].lhs.args[0]);
@@ -90,7 +90,7 @@ describe('AST paths', () => {
 
 function parseTerm(term : string) : Expr {
   const parser = new Parser();
-  const ast = parser.parse("forall x {f(x)} " + term + ";");
+  const ast = parser.parse("F0: forall x {f(x)} " + term + ";");
 
   return ast.formulas[0].body;
 }
@@ -104,7 +104,7 @@ function parseAst(s : string) : Root {
 
 function parseFormula(formula : string) : Formula {
     const parser = new Parser();
-    let ast = parser.parse(formula);
+    let ast = parser.parse("F0: " + formula);
     return ast.formulas[0];
 }
 
