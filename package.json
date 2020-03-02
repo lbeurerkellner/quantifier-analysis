@@ -38,10 +38,7 @@
   "eslintConfig": {
     "extends": "react-app"
   },
-  "repository": {
-    "type" : "git",
-    "url" : "github.com/lbeurerkellner/quantifier-analysis.git"
-  },
+  "repository": "https://github.com/lbeurerkellner/quantifier-analysis.git",
   "browserslist": {
     "production": [
       ">0.2%",
