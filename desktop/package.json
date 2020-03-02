@@ -1,0 +1,20 @@
+{
+  "name": "quantifiers-desktop",
+  "author": "Luca Beurer-Kellner",
+  "description": "An interactive for constructing abstract instantiation graphs.",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^8.0.2",
+    "electron-builder": "^22.3.2"
+  },
+  "build": {
+    "appId": "beurerkellner.aig-editor"
+  },
+  "scripts": {
+    "build": "cd ../ && npm run build",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  }
+}
