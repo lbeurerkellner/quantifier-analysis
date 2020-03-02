@@ -27,5 +27,10 @@
     "build": "cd ../ && npm run build",
     "pack": "electron-builder --dir",
     "dist": "electron-builder"
-  }
+  },
+  "files": [
+    "index.js",
+    "package.json",
+    "static/**/*"
+  ]
 }
