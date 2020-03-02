@@ -9,6 +9,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Install Yarn Dependencies of top-level project
+      run: yarn
     - name: Electron Builder Action
       uses: samuelmeuli/action-electron-builder@v1.3.0
       with:
