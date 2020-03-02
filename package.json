@@ -38,6 +38,7 @@
   "eslintConfig": {
     "extends": "react-app"
   },
+  "repository": "github.com/lbeurerkellner/quantifier-analysis",
   "browserslist": {
     "production": [
       ">0.2%",
