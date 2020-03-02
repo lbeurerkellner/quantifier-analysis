@@ -1,0 +1,22 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Electron Builder Action
+      uses: samuelmeuli/action-electron-builder@v1.3.0
+      with:
+        # GitHub authentication token
+        github_token: ${{ secrets.github_token }}
+        # Whether the app should be released after a successful build
+        release: true
+        # Directory where NPM/Yarn commands should be run
+        package_root: "desktop/"
+        # Name of the optional NPM build script which is executed before `electron-builder`
+        app_root: "desktop/"
