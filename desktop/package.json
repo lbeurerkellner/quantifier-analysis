@@ -12,13 +12,17 @@
   "build": {
     "appId": "beurerkellner.aig-editor",
     "mac": {
-      "category": "public.app-category.developer-tools"
+      "category": "public.app-category.developer-tools",
+      "publish": ["github"]
+    },
+    "linux": {
+	"publish": ["github"]
+    },
+    "win": {
+	"publish": ["github"]
     }
   },
-  "repository": {
-    "type" : "git",
-    "url" : "github.com/lbeurerkellner/quantifier-analysis.git"
-  },
+  "repository": "https://github.com/lbeurerkellner/quantifier-analysis",
   "scripts": {
     "build": "cd ../ && npm run build",
     "pack": "electron-builder --dir",
