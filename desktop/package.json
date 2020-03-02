@@ -10,9 +10,15 @@
     "electron-builder": "^22.3.2"
   },
   "build": {
-    "appId": "beurerkellner.aig-editor"
+    "appId": "beurerkellner.aig-editor",
+    "mac": {
+      "category": "public.app-category.developer-tools"
+    }
   },
-  "repository": "github.com/lbeurerkellner/quantifier-analysis",
+  "repository": {
+    "type" : "git",
+    "url" : "github.com/lbeurerkellner/quantifier-analysis.git"
+  },
   "scripts": {
     "build": "cd ../ && npm run build",
     "pack": "electron-builder --dir",
