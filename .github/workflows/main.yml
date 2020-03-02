@@ -4,8 +4,11 @@ on: [push]
 
 jobs:
   build:
+    runs-on: ${{ matrix.os }}
 
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
 
     steps:
     - uses: actions/checkout@v2
