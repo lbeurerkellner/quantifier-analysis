@@ -34,7 +34,7 @@ export class Toolbar extends React.Component<ToolbarProps, ToolbarState> {
                 onClick={() => this.props.onReset(this.props.formulas[this.state.selectedFormula])}>
                 {this.props.isFresh ? "Create Graph" : "Reset Graph"}
             </button>
-            with
+            <span style={{paddingLeft: "2pt", paddingRight: "2pt"}}>with</span>
             {this.renderFormulaSelect()}
             <div className="separator">
               {window.location.host.startsWith("localhost:") ? <div className="devbuild">Local Build</div> : ""}

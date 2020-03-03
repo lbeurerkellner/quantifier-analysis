@@ -76,20 +76,18 @@ class ActionPopup extends React.Component<ActionPopupProps, {}> {
     }
 
     render() : React.ReactNode {
-        if (this.props.anchorPoint && this.props.popupContent !== null) {
-            return (
-                <div className="action-popup" style={{"top": 0, "left": 0}} ref={ref => this.popupElement = ref}>
-                    <div style={{ float:"left", clear: "both" }} ref={(el) => { this.scrollTopAnchor = el as HTMLElement; }}></div>
-                    {this.renderPopupContent()}
-                </div>  
-            )
-        } else {
-            return (<div style={{display: "none"}}/>);
-        }
+        const isVisible = this.props.anchorPoint && this.props.popupContent !== null;
+        const displayStyle = {display: isVisible ? "block" : "none"};
+        return (
+            <div className="action-popup" style={{...displayStyle, "top": 0, "left": 0}} ref={ref => this.popupElement = ref}>
+                <div style={{ float:"left", clear: "both" }} ref={(el) => { this.scrollTopAnchor = el as HTMLElement; }}></div>
+                {this.renderPopupContent()}
+            </div>  
+        )
     }
 
     renderPopupContent() {
-        if(this.props.popupContent!.type === PopupContentType.GraphOperations) {
+        if(this.props.popupContent?.type === PopupContentType.GraphOperations) {
             const go = this.props.popupContent! as GraphOperationsPopupContent;
             return go.operationCandidates.map((c, idx) => {
                 if (c.type === GraphOperationType.FORWARD_STEP) {
@@ -104,7 +102,7 @@ class ActionPopup extends React.Component<ActionPopupProps, {}> {
                     </ActionItem>)
                 }
             })
-        } else if (this.props.popupContent!.type === PopupContentType.InstantiationInfo) {
+        } else if (this.props.popupContent?.type === PopupContentType.InstantiationInfo) {
             const infoContent = this.props.popupContent! as InstantiationInfoPopupContent;
             return (<ActionItem actions={[]} key={0}>
                 <InstantiationInfoActionContent quantifierInstantiation={infoContent.quantifierInstantiation}/>

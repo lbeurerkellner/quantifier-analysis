@@ -7,7 +7,7 @@ import { AstNode, Formula, Parser, Root } from './ast/parser';
 import { Validator } from './ast/validator';
 import './css/app.css';
 import { SyntaxError } from './def/pegjs';
-import Editor from './Editor';
+import Editor, { layoutAllEditors } from './Editor';
 import Graph from './Graph';
 import { InstantiationGraph, InstantiationNodeType, QuantifierInstantiationNode, TermNode } from './instantiation-graph/instantiation-graph';
 import { InstantiationGraphCyTransformer } from './instantiation-graph/instantiation-graph-cy-transformer';
@@ -17,6 +17,7 @@ import { backwardStep, BackwardStepCandidate, completeBindings, forwardStep, For
 import State from './state';
 import { StatusBar } from "./StatusBar";
 import { Toolbar } from './Toolbar';
+import SplitPane from "react-split-pane"
 
 
 // parser components and transformers
@@ -48,7 +49,7 @@ interface AppState {
 class App extends React.Component<{}, AppState> {
   parser : Parser
   astTraces? : Map<string, AstNode>
-  graphViewOffsetLeft : number = 0
+  graphComponent : Graph|null = null
 
   constructor(props : any) {
     super(props)
@@ -87,27 +88,31 @@ class App extends React.Component<{}, AppState> {
           graphDotEncoded={this.state.instantiationDotGraph}
         />
         <div className="content">
-          <div className="editor-pane">
-            <Editor markerData={this.state.markers} decorations={this.state.editorDecorations}/>
-            <StatusBar isFresh={this.state.instantiationCyGraph.length === 0}
-              isDirty={this.state.markers.length === 0 && this.state.graphHash !== strHasher(this.state.ast?.inputText ?? "")}
-            />
-          </div>
-          <Graph 
-            graphHash={this.state.graphHash}
-            graph={this.state.instantiationCyGraph} 
-            onTapNode={this.onTapNode.bind(this, "inst")}
-            onSecondaryTapNode={this.onSecondaryTapNode.bind(this, "inst")} 
-            onCanvasMove={this.onGraphCanvasMove.bind(this)}
-            onNodePositionChange={this.onNodePositionChange.bind(this)}
-            layout="preset"
-            ref={ref => {this.graphViewOffsetLeft = ref?.graphContainer?.offsetLeft || 0;}}/>
-          <ActionPopup 
+          <SplitPane split="vertical" minSize={300} defaultSize="35%" 
+            onChange={() => layoutAllEditors()}
+            onDragFinished={() => layoutAllEditors()}>
+            <div className="editor-pane">
+              <Editor markerData={this.state.markers} decorations={this.state.editorDecorations}/>
+              <StatusBar isFresh={this.state.instantiationCyGraph.length === 0}
+                isDirty={this.state.markers.length === 0 && this.state.graphHash !== strHasher(this.state.ast?.inputText ?? "")}
+              />
+            </div>
+            <Graph 
+              graphHash={this.state.graphHash}
+              graph={this.state.instantiationCyGraph} 
+              onTapNode={this.onTapNode.bind(this, "inst")}
+              onSecondaryTapNode={this.onSecondaryTapNode.bind(this, "inst")} 
+              onCanvasMove={this.onGraphCanvasMove.bind(this)}
+              onNodePositionChange={this.onNodePositionChange.bind(this)}
+              layout="preset"
+              ref={ref => {this.graphComponent = ref || null;}}/>
+          </SplitPane>
+        </div>
+        <ActionPopup 
             anchorPoint={this.state.popupAnchor || undefined} 
             popupContent={this.state.popupContent}
             onApplyOperation={this.onApplyGraphOperation.bind(this)}
           />
-        </div>
       </div>
     );
   }
@@ -133,7 +138,7 @@ class App extends React.Component<{}, AppState> {
       const candidates = target.data("graph-operation-candidates");
       if (candidates.length > 0) {
         let pos = target.renderedPosition();
-        pos = {x: this.graphViewOffsetLeft + pos.x, y: pos.y};
+        pos = {x: this.graphComponent?.graphContainer?.parentElement?.offsetLeft + pos.x, y: pos.y};
         this.setState({
           popupAnchor: pos, 
           popupContent: new GraphOperationsPopupContent(candidates)
@@ -146,7 +151,7 @@ class App extends React.Component<{}, AppState> {
       if (node.type === InstantiationNodeType.QUANTIFIER) {
         const qi = node as QuantifierInstantiationNode;
         let pos = target.renderedPosition();
-        pos = {x: this.graphViewOffsetLeft + pos.x, y: pos.y};
+        pos = {x: this.graphComponent?.graphContainer?.parentElement?.offsetLeft + pos.x, y: pos.y};
         this.setState({
           popupAnchor: pos, 
           popupContent: new InstantiationInfoPopupContent(qi)

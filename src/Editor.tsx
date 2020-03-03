@@ -13,6 +13,12 @@ interface EditorProps {
   decorations : editor.IModelDeltaDecoration[]
 }
 
+const editorComponents = new Set<Editor>();
+
+export function layoutAllEditors() {
+  editorComponents.forEach(e => e.editorHandle?.layout());
+}
+
 class Editor extends React.Component<EditorProps, {}> {
   public static defaultProps = {
     decorations: []
@@ -47,6 +53,8 @@ class Editor extends React.Component<EditorProps, {}> {
     State.store("editorContent", content);
     
     this.editorHandle = monacoEditor;
+
+    window.addEventListener("resize", () => this.editorHandle?.layout());
   }
 
   onChange(newValue : any, e : any) {
@@ -65,6 +73,14 @@ class Editor extends React.Component<EditorProps, {}> {
       this.previousDecorationHandles = this.editorHandle.deltaDecorations(
         this.previousDecorationHandles, this.props.decorations);
     }
+  }
+
+  componentDidMount() {
+    editorComponents.add(this);
+  }
+
+  componentDidUnmount() {
+    editorComponents.delete(this);
   }
 }
 
