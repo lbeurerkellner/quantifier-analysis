@@ -108,6 +108,26 @@ export function computePossibleForwardSteps(instantiationGraph : InstantiationGr
             )
         );
     });
+    let ctr = 0;
+    const plainBindingVariableBindings = new Map<string, VariableNode>();
+    // add plain binding matches per pattern
+    allPatterns.forEach(pattern => {
+        const existing = patternMatches.get(pattern) || [];
+        
+        patternMatches.set(pattern, [...existing, {
+            binding: new Map(), // no constraints on used bindings from this pattern
+            existingTriggerTerms: new Map()
+        }]);
+    });
+    console.log(plainBindingVariableBindings);
+
+    Array.from(patternMatches.entries()).forEach(e => {
+        const bindingDescriptions = e[1].map(ematch => {
+            return "[" + Array.from(ematch.binding.entries()).map(e => e[0] + " => " + instantiatedPath(e[1], true)).join(", ") + "]";
+        })
+
+        console.log(path(e[0], new Map(), true) + ": [\n" + bindingDescriptions.join("\n") + "\n]");
+    });
 
     const candidates = formulas.flatMap(formula => {
         const formulaQNodes = qNodes.filter(q => q.formula === formula);
@@ -123,6 +143,8 @@ export function computePossibleForwardSteps(instantiationGraph : InstantiationGr
             .map(pmc => mergeMatches(pmc))
             // sort out incompatible pattern binding combinations
             .filter(ematch => ematch !== null)
+            // sort out complete matches without any existing terms (all bindings are plain)
+            .filter(ematch => ematch!.existingTriggerTerms.size > 0)
             // augment binding to a complete one
             .map(ematch => completeMatch(formula, ematch!)) 
             // only include matches which have not been instantiated yet
@@ -384,10 +406,10 @@ export function computePossibleBackwardMatches(instantiationGraph : Instantiatio
                     ];
                 }));
                 
-                console.log("Inverted body bindings", invertedBodyBindings);
+                // console.log("Inverted body bindings", invertedBodyBindings);
                 // console.log("Inverted Bindings", invertedBodyBindings);
-                console.log("New variable equivalence terms", variableEquivalentTerms);
-                console.log("Check against instantiations", formulaQNodes);
+                // console.log("New variable equivalence terms", variableEquivalentTerms);
+                // console.log("Check against instantiations", formulaQNodes);
                 
                 const instantiationWithEquivalentBinding = formulaQNodes.find(q => {
                     //// Step (3) check each binding in q.binding to be in the equivalence class of the obtained instantiated term nodes
@@ -452,7 +474,11 @@ export function computeExpressionPaths(node : Expr, invertedBodyBindings : Map<s
  * of the same name.
  */
 export function completeBindings(formula : Formula, bindings : Map<string, TermNode>) : Map<string, TermNode> {
-    formula.variables.filter(v => !bindings.has(v.globalName)).forEach(v => {
+    return completeBindingsForVariables(formula.variables, bindings);
+}
+
+export function completeBindingsForVariables(variables : Variable[], bindings : Map<string, TermNode>) : Map<string, TermNode> {
+    variables.filter(v => !bindings.has(v.globalName)).forEach(v => {
         const variableNode : VariableNode = {
             type: InstantiationNodeType.VARIABLE,
             name: v.name,
@@ -460,14 +486,14 @@ export function completeBindings(formula : Formula, bindings : Map<string, TermN
             equivalenceClass: setOf(),
             references: setOf(),
             variable: v,
-            predecessors: setOf()
+            predecessors: setOf(),
+            globalName: null
         };
         bindings.set(v.globalName, variableNode)
     });
     
     return bindings;
 }
-
 
 export function *combinations<T>(bags : T[][]) : IterableIterator<T[]> {
     if (bags.length === 1) {

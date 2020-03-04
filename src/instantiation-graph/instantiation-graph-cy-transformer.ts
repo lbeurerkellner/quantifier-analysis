@@ -182,7 +182,7 @@ export class InstantiationGraphCyTransformer {
         const nodeId = "var_" + (this.ctr++);
         let nodes: any[] = [{ data: { 
                 "id": nodeId, 
-                "label": v.name,
+                "label": v.globalName,
                 "background-color": "#C44545",
                 instantiationNode: v
             },

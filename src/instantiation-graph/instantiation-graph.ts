@@ -57,6 +57,7 @@ export interface FunctionApplicationNode extends TermNode {
 
 export interface VariableNode extends TermNode {
     name : string
+    globalName : string|null
     variable : Variable
 }
 
@@ -208,6 +209,7 @@ export class InstantiationGraph {
             resultNode = faNode;
         } else if (term.type === NodeType.CONSTANT) {
             const c = term as Constant;
+            const globalVariableName = "v" + (this.ctr++) + ":" + c.referencesVariable?.globalName;
             if (!c.referencesVariable) {
                 throw new Error("Cannot instantiate constant without correspondingly bound variable " + e);
             }
@@ -222,10 +224,13 @@ export class InstantiationGraph {
                 if (reference) {
                     resultNode.references.add(reference);
                 }
+                if (resultNode.type === InstantiationNodeType.VARIABLE) {
+                    (resultNode as VariableNode).globalName = (resultNode as VariableNode).globalName || globalVariableName
+                }
             } else {
                 // check for cached node
-                if (resultNode && term.type as string !== resultNode.type as string) {
-                    // variable 'term' has been replaced/bound to a different term in the current graph
+                if (resultNode && resultNode.type !== InstantiationNodeType.VARIABLE) {
+                    // variable 'term' has been replaced/bound to a non-variable term in the current graph
                     // extend existing node by additional 'reference' parent node
                     if (reference) {
                         resultNode.references.add(reference);
@@ -238,6 +243,7 @@ export class InstantiationGraph {
                         equivalenceClass: setOf(),
                         type: InstantiationNodeType.VARIABLE,
                         variable: c.referencesVariable!,
+                        globalName: globalVariableName,
                         references: setOf(), 
                         instantiator: setOf(),
                         predecessors: setOf()
@@ -382,7 +388,7 @@ export function instantiatedPath(node : TermNode, globalNames : boolean = true) 
             return fa.name + "(" + fa.arguments.map(a => instantiatedPath(a as any, globalNames)).join(", ") + ")";
         case InstantiationNodeType.VARIABLE:
             const v = node as VariableNode;        
-            return globalNames ? v.variable.globalName : v.variable.name;
+            return globalNames ? (v.globalName || v.variable.globalName) : v.variable.name;
     }
     throw new Error("Unhandled instantiation graph element type in path computation " + node.type);
 }

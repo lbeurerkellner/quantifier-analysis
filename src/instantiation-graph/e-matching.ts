@@ -75,6 +75,8 @@ export function mergeBindings(multipleBindings : Map<string, TermNode>[]) : Map<
                     // nothing to do since an equivalent binding has already
                     // been added to mergedBindings
                 } else {
+                    console.log("Bindings are incompatible", multipleBindings);
+                    console.log(mergedBindings.get(b[0]), b[1], mergedBindings.get(b[0]) == b[1]);
                     return null; // bindings are incompatible
                 }
             } else {

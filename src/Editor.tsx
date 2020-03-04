@@ -79,7 +79,7 @@ class Editor extends React.Component<EditorProps, {}> {
     editorComponents.add(this);
   }
 
-  componentDidUnmount() {
+  componentWillUnmount() {
     editorComponents.delete(this);
   }
 }

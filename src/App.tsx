@@ -9,7 +9,7 @@ import './css/app.css';
 import { SyntaxError } from './def/pegjs';
 import Editor, { layoutAllEditors } from './Editor';
 import Graph from './Graph';
-import { InstantiationGraph, InstantiationNodeType, QuantifierInstantiationNode, TermNode } from './instantiation-graph/instantiation-graph';
+import { InstantiationGraph, InstantiationNodeType, QuantifierInstantiationNode, TermNode, VariableNode } from './instantiation-graph/instantiation-graph';
 import { InstantiationGraphCyTransformer } from './instantiation-graph/instantiation-graph-cy-transformer';
 import { InstantiationGraphDotTransformer } from './instantiation-graph/instantiation-graph-dot-transformer';
 import { InstantiationGraphLayout, NodePosition } from './instantiation-graph/instantiation-graph-layout';
@@ -156,6 +156,9 @@ class App extends React.Component<{}, AppState> {
           popupAnchor: pos, 
           popupContent: new InstantiationInfoPopupContent(qi)
         });
+      }
+      if (node.type === InstantiationNodeType.VARIABLE) {
+        console.log((node as VariableNode).globalName);
       }
     }
   }
