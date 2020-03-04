@@ -1,6 +1,6 @@
 # Analysis Tool for Quantifier Instantiation Behaviour
 
-<img src="screenshots/tool.png" style="max-width: 70%; display: block; margin: auto;"/>
+<img src="screenshots/tool.png" width="400pt" style="max-width: 50%"/>
 
 ![CI](https://github.com/lbeurerkellner/quantifier-analysis/workflows/CI/badge.svg)
 
