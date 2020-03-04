@@ -6,7 +6,7 @@
 
 [Download Latest Release](https://github.com/lbeurerkellner/quantifier-analysis/releases)
 
-This repository contains the implementation of an interactive construction editor for abstract instantiation graphs (AIG). AIGs can be used to model and analyse the instantiation behaviour of SMT solvers which implement universally quantified formulas using E-Matching \[1\].
+This repository contains the implementation of an interactive construction editor for abstract instantiation graphs (AIG). AIGs can be used to model and analyse the instantiation behaviour of SMT solvers which implement universally quantified formulas using E-Matching \[1\]. This allows to reason and debug performance issues that may arise due to matching loops during quantifier instantiation.
 
 ## Building
 
